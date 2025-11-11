@@ -1,0 +1,1341 @@
+    -- example script by https://github.com/mstudio45/LinoriaLib/blob/main/Example.lua and modified by deivid
+    -- You can suggest changes with a pull request or something
+
+    local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+    local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+    local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+    local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+    local Options = Library.Options
+    local Toggles = Library.Toggles
+
+    Library.ForceCheckbox = false -- Forces AddToggle to AddCheckbox
+    Library.ShowToggleFrameInKeybinds = true -- Make toggle keybinds work inside the keybinds UI (aka adds a toggle to the UI). Good for mobile users (Default value = true)
+
+    local Window = Library:CreateWindow({
+        Title = "AI Monster",
+        Footer = "by dex3x3",
+        Icon = 95952879196724,
+        NotifySide = "Right",
+        ShowCustomCursor = true,
+    })
+
+    -- Tabs: keep only Main (empty) and UI Settings
+    local Tabs = {
+        Main = Window:AddTab("Main", "user"),
+        ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
+    }
+
+    -- UI Settings
+    local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
+
+
+    MenuGroup:AddToggle("ShowCustomCursor", {
+        Text = "Custom Cursor",
+        Default = true,
+        Callback = function(Value)
+            Library.ShowCustomCursor = Value
+        end,
+    })
+    MenuGroup:AddDropdown("NotificationSide", {
+        Values = { "Left", "Right" },
+        Default = "Right",
+
+        Text = "Notification Side",
+
+        Callback = function(Value)
+            Library:SetNotifySide(Value)
+        end,
+    })
+    MenuGroup:AddDropdown("DPIDropdown", {
+        Values = { "50%", "75%", "100%", "125%", "150%", "175%", "200%" },
+        Default = "75%",
+
+        Text = "DPI Scale",
+
+        Callback = function(Value)
+            Value = Value:gsub("%%", "")
+            local DPI = tonumber(Value)
+
+            Library:SetDPIScale(DPI)
+        end,
+    })
+    MenuGroup:AddDivider()
+    MenuGroup:AddLabel("Menu bind")
+        :AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
+
+    MenuGroup:AddButton("Unload", function()
+        Library:Unload()
+    end)
+
+    Library.ToggleKeybind = Options.MenuKeybind -- Allows you to have a custom keybind for the menu
+
+    -- Addons:
+    -- SaveManager (Allows you to have a configuration system)
+    -- ThemeManager (Allows you to have a menu theme system)
+
+    -- Hand the library over to our managers
+    ThemeManager:SetLibrary(Library)
+    SaveManager:SetLibrary(Library)
+
+    -- Ignore keys that are used by ThemeManager.
+    -- (we dont want configs to save themes, do we?)
+    SaveManager:IgnoreThemeSettings()
+
+    -- Adds our MenuKeybind to the ignore list
+    -- (do you want each config to have a different menu key? probably not.)
+    SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+
+    -- use case for doing it this way:
+    -- a script hub could have themes in a global folder
+    -- and game configs in a separate folder per game
+    ThemeManager:SetFolder("MyScriptHub")
+    SaveManager:SetFolder("MyScriptHub/specific-game")
+    SaveManager:SetSubFolder("specific-place") -- if the game has multiple places inside of it (for example: DOORS)
+    -- you can use this to save configs for those places separately
+    -- The path in this script would be: MyScriptHub/specific-game/settings/specific-place
+    -- [ This is optional ]
+
+    -- Builds our config menu on the right side of our tab
+    SaveManager:BuildConfigSection(Tabs["UI Settings"])
+
+    -- Builds our theme menu (with plenty of built in themes) on the left side
+    -- NOTE: you can also call ThemeManager:ApplyToGroupbox to add it to a specific groupbox
+    ThemeManager:ApplyToTab(Tabs["UI Settings"])
+
+    -- You can use the SaveManager:LoadAutoloadConfig() to load a config
+    -- which has been marked to be one that auto loads!
+    SaveManager:LoadAutoloadConfig()
+
+    do
+        local Players = game:GetService("Players")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Workspace = game:GetService("Workspace")
+
+        local player = Players.LocalPlayer
+
+        local function getZoneNames()
+            local fieldsFolder = Workspace:FindFirstChild("Fields")
+            if not fieldsFolder then return {} end
+            local list = {}
+            for _, zone in ipairs(fieldsFolder:GetChildren()) do
+                table.insert(list, zone.Name)
+            end
+            table.sort(list)
+            return list
+        end
+
+        local function getZoneByName(name)
+            local fieldsFolder = Workspace:FindFirstChild("Fields")
+            if not fieldsFolder then return nil end
+            return fieldsFolder:FindFirstChild(name)
+        end
+
+        local hitRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Tool"):WaitForChild("Hit")
+        local useRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Tool"):WaitForChild("Use")
+
+        local farmingZoneName = nil
+        local farmCoroutine = nil
+        local farmStop = false
+
+        local function stopFarming()
+            if farmingZoneName ~= nil then
+            end
+            farmingZoneName = nil
+            if farmCoroutine then
+                farmStop = true
+                local tries = 0
+                while coroutine.status(farmCoroutine) ~= "dead" and tries < 100 do
+                    task.wait(0.05)
+                    tries = tries + 1
+                end
+                farmCoroutine = nil
+            end
+            farmStop = false
+        end
+
+        local function teleportToZone(zoneName)
+            local zone = getZoneByName(zoneName)
+            if not zone then return end
+            local char = player.Character or player.CharacterAdded:Wait()
+            if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
+            local cf
+            if zone:IsA("Model") then
+                cf = zone:GetPivot()
+            elseif zone:IsA("BasePart") then
+                cf = zone.CFrame
+            else
+                return
+            end
+            char:PivotTo(cf + Vector3.new(0, 5, 0))
+        end
+
+        local function startFarming(zoneName)
+            if farmingZoneName == zoneName then return end
+            stopFarming()
+            if not zoneName then return end
+
+            local zone = getZoneByName(zoneName)
+            if not zone then
+                return
+            end
+            local resources = zone:FindFirstChild("Resources")
+            if not resources then
+                return
+            end
+
+            farmingZoneName = zoneName
+            farmStop = false
+            farmCoroutine = coroutine.create(function()
+                while not farmStop do
+                    useRemote:FireServer()
+                    local models = {}
+                    for _, obj in ipairs(resources:GetChildren()) do
+                        if obj.Name == "ResourceModel" then
+                            table.insert(models, obj)
+                        end
+                    end
+                    for _, resourceModel in ipairs(models) do
+                        if farmStop then break end
+                        hitRemote:FireServer(resourceModel)
+                        task.wait(0.44)
+                        if farmStop then break end
+                    end
+                    task.wait(0.1)
+                end
+            end)
+            coroutine.resume(farmCoroutine)
+        end
+
+        player.CharacterAdded:Connect(function()
+            if farmingZoneName then
+                teleportToZone(farmingZoneName)
+                startFarming(farmingZoneName)
+            end
+        end)
+
+        local MainGroup = Tabs.Main:AddLeftGroupbox("Auto Harvest", "sprout")
+
+        local zones = getZoneNames()
+        MainGroup:AddDropdown("HarvestZone", {
+            Values = zones,
+            Default = zones[1],
+            Multi = false,
+            Text = "Farm Zone",
+            Searchable = true,
+            Callback = function(value)
+                if Toggles.AutoHarvestToggle and Toggles.AutoHarvestToggle.Value then
+                    teleportToZone(value)
+                    startFarming(value)
+                end
+            end,
+        })
+
+        MainGroup:AddToggle("AutoHarvestToggle", {
+            Text = "Auto Harvest",
+            Default = false,
+            Callback = function(enabled)
+                local selected = Options.HarvestZone and Options.HarvestZone.Value or nil
+                if enabled then
+                    if not selected or selected == "" then
+                        Library:Notify("Select a zone in the dropdown list", 3)
+                        Toggles.AutoHarvestToggle:SetValue(false)
+                        return
+                    end
+                    teleportToZone(selected)
+                    startFarming(selected)
+                else
+                    stopFarming()
+                end
+            end,
+        })
+
+        MainGroup:AddButton("Update Zone List", function()
+            local newZones = getZoneNames()
+            Options.HarvestZone:SetValues(newZones)
+            if #newZones > 0 and not Options.HarvestZone.Value then
+                Options.HarvestZone:SetValue(newZones[1])
+            end
+        end)
+    end
+
+    do
+        local Players = game:GetService("Players")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Workspace = game:GetService("Workspace")
+        local LocalPlayer = Players.LocalPlayer
+
+        local hitRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Tool"):WaitForChild("Hit")
+        local useRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Tool"):WaitForChild("Use")
+
+        local function getBugNames()
+            local bugSpawns = Workspace:FindFirstChild("BugSpawns")
+            if not bugSpawns then return {} end
+            local list = {}
+            for _, part in ipairs(bugSpawns:GetChildren()) do
+                if part:IsA("BasePart") then
+                    table.insert(list, part.Name)
+                end
+            end
+            table.sort(list)
+            return list
+        end
+
+        local function getBugByName(name)
+            local bugSpawns = Workspace:FindFirstChild("BugSpawns")
+            if not bugSpawns then return nil end
+            return bugSpawns:FindFirstChild(name)
+        end
+
+        local function teleportToBug(bugName)
+            local bug = getBugByName(bugName)
+            if not bug then return end
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            if bug and character then
+                local cf = bug:GetPivot()
+                character:PivotTo(cf + Vector3.new(0, 5, 0))
+            end
+        end
+
+        local farmingBugName = nil
+        local bugFarmCoroutine = nil
+        local bugFarmStop = false
+
+        local function stopBugFarming()
+            farmingBugName = nil
+            if bugFarmCoroutine then
+                bugFarmStop = true
+                local tries = 0
+                while coroutine.status(bugFarmCoroutine) ~= "dead" and tries < 100 do
+                    task.wait(0.05)
+                    tries = tries + 1
+                end
+                bugFarmCoroutine = nil
+            end
+            bugFarmStop = false
+        end
+
+        local function startBugFarming(bugName)
+            if farmingBugName == bugName then return end
+            stopBugFarming()
+            if not bugName then return end
+
+            local bug = getBugByName(bugName)
+            if not bug then
+                return
+            end
+
+            farmingBugName = bugName
+            bugFarmStop = false
+            bugFarmCoroutine = coroutine.create(function()
+                while not bugFarmStop do
+                    useRemote:FireServer()
+                    hitRemote:FireServer(bug)
+                    task.wait(0.44)
+                    if bugFarmStop then break end
+                end
+            end)
+            coroutine.resume(bugFarmCoroutine)
+        end
+
+        LocalPlayer.CharacterAdded:Connect(function()
+            if farmingBugName then
+                teleportToBug(farmingBugName)
+                startBugFarming(farmingBugName)
+            end
+        end)
+
+        local BugGroup = Tabs.Main:AddLeftGroupbox("Auto Farm Bugs", "bug")
+
+        local bugs = getBugNames()
+        BugGroup:AddDropdown("BugName", {
+            Values = bugs,
+            Default = bugs[1] or nil,
+            Multi = false,
+            Text = "Bug",
+            Searchable = true,
+            Callback = function(value)
+                if Toggles.AutoFarmBugsToggle and Toggles.AutoFarmBugsToggle.Value then
+                    teleportToBug(value)
+                    startBugFarming(value)
+                end
+            end,
+        })
+
+        BugGroup:AddToggle("AutoFarmBugsToggle", {
+            Text = "Auto Farm Bugs",
+            Default = false,
+            Callback = function(enabled)
+                local selected = Options.BugName and Options.BugName.Value or nil
+                if enabled then
+                    if not selected or selected == "" then
+                        Library:Notify("Select a bug in the dropdown list", 3)
+                        Toggles.AutoFarmBugsToggle:SetValue(false)
+                        return
+                    end
+                    teleportToBug(selected)
+                    startBugFarming(selected)
+                else
+                    stopBugFarming()
+                end
+            end,
+        })
+
+        BugGroup:AddButton("Update Bug List", function()
+            local newBugs = getBugNames()
+            Options.BugName:SetValues(newBugs)
+            if #newBugs > 0 and not Options.BugName.Value then
+                Options.BugName:SetValue(newBugs[1])
+            end
+        end)
+
+        local speedEnabled = false
+        local speedConnection = nil
+
+        local function applySpeed(speed)
+            local character = LocalPlayer.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = speed
+                end
+            end
+        end
+
+        local function setupSpeed()
+            if speedConnection then
+                speedConnection:Disconnect()
+                speedConnection = nil
+            end
+
+            if speedEnabled then
+                local currentSpeed = Options.SpeedSlider and Options.SpeedSlider.Value or 24
+                applySpeed(currentSpeed)
+
+                speedConnection = LocalPlayer.CharacterAdded:Connect(function()
+                    task.wait(0.1)
+                    local newSpeed = Options.SpeedSlider and Options.SpeedSlider.Value or 24
+                    applySpeed(newSpeed)
+                end)
+            end
+        end
+
+        BugGroup:AddSlider("SpeedSlider", {
+            Text = "Speed",
+            Default = 24,
+            Min = 24,
+            Max = 500,
+            Rounding = 0,
+            Callback = function(value)
+                if speedEnabled then
+                    applySpeed(value)
+                end
+            end,
+        })
+
+        BugGroup:AddToggle("EnableSpeed", {
+            Text = "Enable Speed",
+            Default = false,
+            Callback = function(enabled)
+                speedEnabled = enabled
+                if enabled then
+                    local currentSpeed = Options.SpeedSlider and Options.SpeedSlider.Value or 24
+                    applySpeed(currentSpeed)
+                    setupSpeed()
+                else
+                    if speedConnection then
+                        speedConnection:Disconnect()
+                        speedConnection = nil
+                    end
+                    local character = LocalPlayer.Character
+                    if character then
+                        local humanoid = character:FindFirstChildOfClass("Humanoid")
+                        if humanoid then
+                            humanoid.WalkSpeed = 24
+                        end
+                    end
+                end
+            end,
+        })
+    end
+
+    do
+        local Players = game:GetService("Players")
+        local ProximityPromptService = game:GetService("ProximityPromptService")
+        local UserInputService = game:GetService("UserInputService")
+        local Workspace = game:GetService("Workspace")
+
+        local player = Players.LocalPlayer
+
+        local autoSellEnabled = false
+        local promptConn
+        local resetKeyConn
+        local currentPrompt
+        local savedDefaults
+
+        local function capturePromptDefaults(prompt)
+            return {
+                MaxActivationDistance = prompt.MaxActivationDistance,
+                RequiresLineOfSight = prompt.RequiresLineOfSight,
+                HoldDuration = prompt.HoldDuration,
+                ActionText = prompt.ActionText,
+                ObjectText = prompt.ObjectText,
+                KeyboardKeyCode = prompt.KeyboardKeyCode,
+                GamepadKeyCode = prompt.GamepadKeyCode,
+                ClickablePrompt = prompt.ClickablePrompt,
+                Enabled = prompt.Enabled,
+                UIOffset = prompt.UIOffset,
+                Style = prompt.Style,
+            }
+        end
+
+        local function resetPromptToDefault(prompt, defaults)
+            if not prompt or not defaults then return end
+            prompt.MaxActivationDistance = defaults.MaxActivationDistance
+            prompt.RequiresLineOfSight = defaults.RequiresLineOfSight
+            prompt.HoldDuration = defaults.HoldDuration
+            prompt.ActionText = defaults.ActionText
+            prompt.ObjectText = defaults.ObjectText
+            prompt.KeyboardKeyCode = defaults.KeyboardKeyCode
+            prompt.GamepadKeyCode = defaults.GamepadKeyCode
+            prompt.ClickablePrompt = defaults.ClickablePrompt
+            prompt.Enabled = defaults.Enabled
+            prompt.UIOffset = defaults.UIOffset
+            prompt.Style = defaults.Style
+        end
+
+        local function findLocalNest()
+            local map = Workspace:FindFirstChild("Map")
+            if not map then return nil end
+            local nestsFolder = map:FindFirstChild("Nests")
+            if not nestsFolder then return nil end
+            for _, nest in ipairs(nestsFolder:GetChildren()) do
+                local sign = nest:FindFirstChild("NestOwnerSign")
+                if sign then
+                    local surfaceGui = sign:FindFirstChild("SurfaceGui")
+                    if surfaceGui then
+                        local playerUsername = surfaceGui:FindFirstChild("PlayerUsername")
+                        if playerUsername and playerUsername:IsA("TextLabel") then
+                            local expectedText = player.Name .. "'s Nest"
+                            if playerUsername.Text == expectedText then
+                                return nest
+                            end
+                        end
+                    end
+                end
+            end
+            return nil
+        end
+
+        local function setupAutoSell()
+            local nest = findLocalNest()
+            if not nest then return end
+            local queenPoint = nest:FindFirstChild("QueenPoint")
+            if not queenPoint then return end
+            local prompt = queenPoint:FindFirstChild("ProximityPrompt")
+            if not prompt or not prompt:IsA("ProximityPrompt") then return end
+
+            currentPrompt = prompt
+            savedDefaults = capturePromptDefaults(prompt)
+
+            prompt.MaxActivationDistance = 9999999
+            prompt.RequiresLineOfSight = false
+
+            local function tryTriggerPrompt()
+                if prompt.Enabled then
+                    task.wait(0.01)
+                    pcall(function()
+                        ProximityPromptService:PromptTriggered(prompt, player)
+                    end)
+                end
+            end
+
+            promptConn = prompt:GetPropertyChangedSignal("Enabled"):Connect(function()
+                if prompt.Enabled and autoSellEnabled then
+                    tryTriggerPrompt()
+                end
+            end)
+
+            if prompt.Enabled then
+                tryTriggerPrompt()
+            end
+
+            resetKeyConn = UserInputService.InputBegan:Connect(function(input, processed)
+                if not processed and input.KeyCode == Enum.KeyCode.R and autoSellEnabled and currentPrompt then
+                    resetPromptToDefault(currentPrompt, savedDefaults)
+                end
+            end)
+        end
+
+        local function teardownAutoSell()
+            if resetKeyConn then resetKeyConn:Disconnect() resetKeyConn = nil end
+            if promptConn then promptConn:Disconnect() promptConn = nil end
+            if currentPrompt and savedDefaults then
+                resetPromptToDefault(currentPrompt, savedDefaults)
+            end
+            currentPrompt = nil
+            savedDefaults = nil
+        end
+
+        local MainGroup = Tabs.Main:AddRightGroupbox("Auto Sell", "shopping-bag")
+        MainGroup:AddToggle("AutoSellToggle", {
+            Text = "Silent Sell",
+            Default = false,
+            Callback = function(enabled)
+                autoSellEnabled = enabled
+                if enabled then
+                    setupAutoSell()
+                else
+                    teardownAutoSell()
+                end
+            end,
+        })
+    end
+
+
+    do
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+        local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UI"):WaitForChild("PurchaseItem")
+        local gameContent = ReplicatedStorage:WaitForChild("GameContent")
+        local backpacksFolder = gameContent:WaitForChild("Backpacks")
+        local toolsFolder = gameContent:WaitForChild("Tools")
+
+        local function getItemNames(folder)
+            local names = {}
+            for _, itemFolder in ipairs(folder:GetChildren()) do
+                if itemFolder:IsA("Folder") then
+                    table.insert(names, itemFolder.Name)
+                end
+            end
+            table.sort(names)
+            return names
+        end
+
+        local function getItemPriceFromFolder(folder, itemName)
+            local itemFolder = folder:FindFirstChild(itemName)
+            if not itemFolder then return nil end
+            local configScript = itemFolder:FindFirstChild("Config")
+            if not configScript then return nil end
+            if configScript:IsA("ModuleScript") then
+                local ok, cfg = pcall(function() return require(configScript) end)
+                if ok and cfg and cfg["Price"] then
+                    return tonumber(cfg["Price"])
+                end
+            elseif configScript:IsA("Script") then
+                local src = configScript.Source
+                local price = string.match(src, '%["Price"%]%s*=%s*(%d+)')
+                if price then
+                    return tonumber(price)
+                end
+            end
+            return nil
+        end
+
+        local ShopGroup = Tabs.Main:AddRightGroupbox("Shop", "shopping-cart")
+
+        local toolNames = getItemNames(toolsFolder)
+        local backpackNames = getItemNames(backpacksFolder)
+        table.insert(toolNames, 1, "None")
+        table.insert(backpackNames, 1, "None")
+
+        ShopGroup:AddDropdown("ShopTool", {
+            Values = toolNames,
+            Default = toolNames[1],
+            Multi = false,
+            Text = "Tools",
+            Searchable = true,
+            FormatDisplayValue = function(value)
+                if value == "None" or value == nil or value == "" then return "None" end
+                local price = getItemPriceFromFolder(toolsFolder, value)
+                if price then
+                    return string.format("%s | Р¦РµРЅР°: %d", value, price)
+                end
+                return value
+            end,
+        })
+
+        ShopGroup:AddDropdown("ShopBackpack", {
+            Values = backpackNames,
+            Default = backpackNames[1],
+            Multi = false,
+            Text = "Backpacks",
+            Searchable = true,
+            FormatDisplayValue = function(value)
+                if value == "None" or value == nil or value == "" then return "None" end
+                local price = getItemPriceFromFolder(backpacksFolder, value)
+                if price then
+                    return string.format("%s | Р¦РµРЅР°: %d", value, price)
+                end
+                return value
+            end,
+        })
+
+        ShopGroup:AddButton("Buy Selected Item", function()
+            local tool = Options.ShopTool and Options.ShopTool.Value or nil
+            local backpack = Options.ShopBackpack and Options.ShopBackpack.Value or nil
+
+            local category, itemName
+            if tool and tool ~= "" and tool ~= "None" then
+                category = "Tools"
+                itemName = tool
+            elseif backpack and backpack ~= "" and backpack ~= "None" then
+                category = "Backpacks"
+                itemName = backpack
+            end
+
+            if not category or not itemName then
+                Library:Notify("Select an item in Tools or Backpacks", 3)
+                return
+            end
+
+            local args = { category, itemName, 1 }
+            pcall(function()
+                purchaseRemote:FireServer(unpack(args))
+            end)
+        end)
+
+        ShopGroup:AddButton("Update Item List", function()
+            local newTools = getItemNames(toolsFolder)
+            local newBackpacks = getItemNames(backpacksFolder)
+            table.insert(newTools, 1, "None")
+            table.insert(newBackpacks, 1, "None")
+            Options.ShopTool:SetValues(newTools)
+            Options.ShopBackpack:SetValues(newBackpacks)
+            if #newTools > 0 and not Options.ShopTool.Value then
+                Options.ShopTool:SetValue(newTools[1])
+            end
+            if #newBackpacks > 0 and not Options.ShopBackpack.Value then
+                Options.ShopBackpack:SetValue(newBackpacks[1])
+            end
+        end)
+
+        ShopGroup:AddInput("StarfruitAmount", {
+            Default = "1",
+            Numeric = true,
+            Finished = false,
+            ClearTextOnFocus = false,
+            Text = "Set Starfruit",
+            Tooltip = "Количество Starfruit для покупки (от 1 до 1000)",
+            Placeholder = "Введите количество (1-1000)",
+            MaxLength = 4,
+            Callback = function(Value)
+                local num = tonumber(Value)
+                if num then
+                    if num < 1 or num > 1000 then
+                        Library:Notify("Допустимые значения: от 1 до 1000", 3)
+                    end
+                end
+            end,
+        })
+
+        Options.StarfruitAmount:OnChanged(function()
+            local value = Options.StarfruitAmount.Value
+            local num = tonumber(value)
+            if num then
+                if num < 1 or num > 1000 then
+                    Library:Notify("Допустимые значения: от 1 до 1000", 3)
+                end
+            end
+        end)
+
+        ShopGroup:AddButton("Buy Starfruit", function()
+            local amountStr = Options.StarfruitAmount and Options.StarfruitAmount.Value or "1"
+            local amount = tonumber(amountStr)
+            
+            if not amount then
+                Library:Notify("Введите корректное число", 3)
+                return
+            end
+            
+            if amount < 1 or amount > 1000 then
+                Library:Notify("Допустимые значения: от 1 до 1000", 3)
+                return
+            end
+            
+            local args = {
+                "Materials",
+                "Starfruit",
+                amount
+            }
+            
+            pcall(function()
+                purchaseRemote:FireServer(unpack(args))
+            end)
+        end)
+    end
+
+do
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Workspace = game:GetService("Workspace")
+    local LocalPlayer = Players.LocalPlayer
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+    local nestRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Nest"):WaitForChild("ItemInteract")
+    local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UI"):WaitForChild("PurchaseItem")
+    local upgradeRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UI"):WaitForChild("PurchaseUpgrade")
+
+    local function findLocalNest()
+        local map = Workspace:FindFirstChild("Map")
+        if not map then return nil end
+        local nestsFolder = map:FindFirstChild("Nests")
+        if not nestsFolder then return nil end
+        for _, nest in ipairs(nestsFolder:GetChildren()) do
+            local sign = nest:FindFirstChild("NestOwnerSign")
+            if sign then
+                local surfaceGui = sign:FindFirstChild("SurfaceGui")
+                if surfaceGui then
+                    local playerUsername = surfaceGui:FindFirstChild("PlayerUsername")
+                    if playerUsername and playerUsername:IsA("TextLabel") then
+                        local expectedText = LocalPlayer.Name .. "'s Nest"
+                        if playerUsername.Text == expectedText then
+                            return nest
+                        end
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    local function getActiveSlots()
+        local nest = findLocalNest()
+        if not nest then return {} end
+        local slotsFolder = nest:FindFirstChild("Slots")
+        if not slotsFolder then return {} end
+
+        local activeSlots = {}
+        for _, slot in ipairs(slotsFolder:GetChildren()) do
+            if slot:IsA("BasePart") or slot:IsA("Model") then
+                local transparency = 1
+                if slot:IsA("BasePart") then
+                    transparency = slot.Transparency
+                elseif slot:IsA("Model") then
+                    local primaryPart = slot.PrimaryPart
+                    if primaryPart then
+                        transparency = primaryPart.Transparency
+                    end
+                end
+
+                if transparency == 0 then
+                    local hasBorder = slot:FindFirstChild("Border") ~= nil
+                    local hasFace = slot:FindFirstChild("Face") ~= nil
+                    
+                    if hasBorder and not hasFace then
+                        table.insert(activeSlots, {
+                            slot = slot,
+                            name = slot.Name,
+                            canRoll = true,
+                            canReroll = false
+                        })
+                    elseif hasFace then
+                        table.insert(activeSlots, {
+                            slot = slot,
+                            name = slot.Name,
+                            canRoll = false,
+                            canReroll = true
+                        })
+                    end
+                end
+            end
+        end
+        table.sort(activeSlots, function(a, b) return a.name < b.name end)
+        return activeSlots
+    end
+
+    local function getInventory()
+        local inventory = {
+            starfruit = 0,
+            eggs = {},
+            allItems = {}
+        }
+
+        local inventoryGui = PlayerGui:FindFirstChild("Inventory")
+        if not inventoryGui then return inventory end
+
+        local holder = inventoryGui:FindFirstChild("Holder")
+        if not holder then return inventory end
+
+        local list = holder:FindFirstChild("List")
+        if not list then return inventory end
+
+        for _, itemSlot in ipairs(list:GetChildren()) do
+            if itemSlot:IsA("Frame") and itemSlot.Name == "ItemSlot" then
+                
+                local iconHolder = itemSlot:FindFirstChild("IconHolder")
+                if iconHolder then
+                    local button1 = iconHolder:FindFirstChild("Button")
+                    if button1 and button1:IsA("ImageButton") then
+                        local amountLabel = button1:FindFirstChild("Amount")
+                        if amountLabel and amountLabel:IsA("TextLabel") then
+                            local amountText = amountLabel.Text
+                            local amount = tonumber(string.match(amountText, "%d+")) or 0
+                            
+                            local button2 = itemSlot:FindFirstChild("Button")
+                            if button2 and button2:IsA("ImageButton") then
+                                local textHolder = button2:FindFirstChild("TextHolder")
+                                if textHolder then
+                                    local itemNameLabel = textHolder:FindFirstChild("ItemName")
+                                    if itemNameLabel and itemNameLabel:IsA("TextLabel") then
+                                        local itemName = itemNameLabel.Text
+                                        
+                                        table.insert(inventory.allItems, {
+                                            name = itemName,
+                                            amount = amount,
+                                            slotName = itemSlot.Name
+                                        })
+                                        
+                                        if itemName == "Starfruit" then
+                                            inventory.starfruit = amount
+                                        elseif string.find(itemName, "Egg") then
+                                            local found = false
+                                            for _, eggData in ipairs(inventory.eggs) do
+                                                if eggData.name == itemName then
+                                                    eggData.amount = amount
+                                                    found = true
+                                                    break
+                                                end
+                                            end
+                                            if not found then
+                                                table.insert(inventory.eggs, {
+                                                    name = itemName,
+                                                    amount = amount
+                                                })
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        return inventory
+    end
+
+    local function getAvailableEggs()
+        local eggsFolder = ReplicatedStorage:FindFirstChild("GameContent")
+        if not eggsFolder then return {} end
+        eggsFolder = eggsFolder:FindFirstChild("Eggs")
+        if not eggsFolder then return {} end
+
+        local eggs = {}
+        for _, egg in ipairs(eggsFolder:GetChildren()) do
+            if egg:IsA("Folder") then
+                table.insert(eggs, egg.Name)
+            end
+        end
+        table.sort(eggs)
+        return eggs
+    end
+
+    local function getAvailableUpgrades()
+        local upgradesGui = PlayerGui:FindFirstChild("Upgrades")
+        if not upgradesGui then return {} end
+
+        local holder = upgradesGui:FindFirstChild("Holder")
+        if not holder then return {} end
+
+        local list = holder:FindFirstChild("List")
+        if not list then return {} end
+
+        local upgrades = {}
+        for _, upgradeFrame in ipairs(list:GetChildren()) do
+            if upgradeFrame:IsA("Frame") then
+                table.insert(upgrades, upgradeFrame.Name)
+            end
+        end
+        table.sort(upgrades)
+        return upgrades
+    end
+
+    local NestGroup = Tabs.Main:AddRightGroupbox("Nest Management", "home")
+
+    local inventoryLabelObject
+
+    local function updateInventoryDisplay()
+        local success, inv = pcall(getInventory)
+        if not success or not inv then
+            if inventoryLabelObject then
+                inventoryLabelObject:SetText("Inventory: Error loading")
+            end
+            return {}
+        end
+        
+        inv.starfruit = inv.starfruit or 0
+        inv.eggs = inv.eggs or {}
+        inv.allItems = inv.allItems or {}
+        
+        local inventoryText = ""
+        
+        inventoryText = inventoryText .. "⭐: " .. tostring(inv.starfruit)
+        
+        if #inv.eggs > 0 then
+            inventoryText = inventoryText .. " | 🥚: "
+            for i, eggData in ipairs(inv.eggs) do
+                if i > 1 then
+                    inventoryText = inventoryText .. ", "
+                end
+                inventoryText = inventoryText .. eggData.name .. "(" .. tostring(eggData.amount) .. ")"
+            end
+        else
+            inventoryText = inventoryText .. " | 🥚: None"
+        end
+        
+        local otherItemsCount = 0
+        for _, itemData in ipairs(inv.allItems) do
+            if itemData.name ~= "Starfruit" and not string.find(itemData.name, "Egg") then
+                otherItemsCount = otherItemsCount + 1
+            end
+        end
+        
+        inventoryText = inventoryText .. " | 📦: " .. tostring(otherItemsCount) .. " items"
+        
+        if inventoryLabelObject then
+            inventoryLabelObject:SetText(inventoryText)
+        end
+        
+        return inv
+    end
+
+    inventoryLabelObject = NestGroup:AddLabel("Loading inventory...", true)
+
+    NestGroup:AddButton("Update Inventory", function()
+        updateInventoryDisplay()
+    end)
+
+    local slots = getActiveSlots()
+    local slotNames = {}
+    for _, slotData in ipairs(slots) do
+        local displayName = slotData.name
+        if slotData.canReroll then
+            displayName = displayName .. " (Reroll)"
+        elseif slotData.canRoll then
+            displayName = displayName .. " (Roll)"
+        end
+        table.insert(slotNames, displayName)
+    end
+
+    if #slotNames == 0 then
+        table.insert(slotNames, "No active slots")
+    end
+
+    NestGroup:AddDropdown("SlotSelect", {
+        Values = slotNames,
+        Default = slotNames[1],
+        Multi = false,
+        Text = "Select Slot",
+        Searchable = true,
+    })
+
+    NestGroup:AddButton("Update Slots", function()
+        local newSlots = getActiveSlots()
+        local newSlotNames = {}
+        for _, slotData in ipairs(newSlots) do
+            local displayName = slotData.name
+            if slotData.canReroll then
+                displayName = displayName .. " (Reroll)"
+            elseif slotData.canRoll then
+                displayName = displayName .. " (Roll)"
+            end
+            table.insert(newSlotNames, displayName)
+        end
+        
+        if #newSlotNames == 0 then
+            table.insert(newSlotNames, "No active slots")
+        end
+        
+        Options.SlotSelect:SetValues(newSlotNames)
+        if #newSlotNames > 0 then
+            Options.SlotSelect:SetValue(newSlotNames[1])
+        end
+    end)
+
+    NestGroup:AddDropdown("RerollType", {
+        Values = {"Until Rare", "Until Epic", "Until Rare, Until Epic"},
+        Default = "Until Rare",
+        Multi = false,
+        Text = "Reroll Type",
+    })
+
+    NestGroup:AddButton("Reroll Starfruit", function()
+        local selectedSlot = Options.SlotSelect and Options.SlotSelect.Value or nil
+        if not selectedSlot or selectedSlot == "No active slots" then
+            Library:Notify("Select a slot first", 3)
+            return
+        end
+
+        local slotName = string.match(selectedSlot, "^(%w+)")
+        local nest = findLocalNest()
+        if not nest then
+            Library:Notify("Nest not found", 3)
+            return
+        end
+
+        local slotsFolder = nest:FindFirstChild("Slots")
+        if not slotsFolder then
+            Library:Notify("Slots folder not found", 3)
+            return
+        end
+
+        local slot = slotsFolder:FindFirstChild(slotName)
+        if not slot then
+            Library:Notify("Slot not found", 3)
+            return
+        end
+
+        local rerollType = Options.RerollType and Options.RerollType.Value or "Until Rare"
+        local rerollOptions = {}
+        if rerollType == "Until Rare, Until Epic" then
+            rerollOptions = {"Until Rare", "Until Epic"}
+        else
+            rerollOptions = {rerollType}
+        end
+
+        local args = {
+            "Materials",
+            "Starfruit",
+            slot,
+            1,
+            rerollOptions
+        }
+
+        pcall(function()
+            nestRemote:FireServer(unpack(args))
+        end)
+    end)
+
+    local function updateEggDropdown()
+        local inventory = getInventory()
+        local eggNames = {}
+        
+        if inventory and inventory.eggs then
+            for _, eggData in ipairs(inventory.eggs) do
+                if eggData and eggData.name then
+                    table.insert(eggNames, eggData.name)
+                end
+            end
+        end
+
+        if #eggNames == 0 then
+            table.insert(eggNames, "No eggs available")
+        end
+
+        if Options.RerollEggSelect then
+            Options.RerollEggSelect:SetValues(eggNames)
+            if #eggNames > 0 then
+                Options.RerollEggSelect:SetValue(eggNames[1])
+            end
+        end
+        
+        return eggNames
+    end
+
+    local initialEggs = updateEggDropdown()
+
+    NestGroup:AddDropdown("RerollEggSelect", {
+        Values = initialEggs,
+        Default = initialEggs[1],
+        Multi = false,
+        Text = "Egg for Reroll",
+        Searchable = true,
+    })
+
+    NestGroup:AddButton("Reroll Egg", function()
+        local selectedSlot = Options.SlotSelect and Options.SlotSelect.Value or nil
+        local selectedEgg = Options.RerollEggSelect and Options.RerollEggSelect.Value or nil
+
+        if not selectedSlot or selectedSlot == "No active slots" then
+            Library:Notify("Select a slot first", 3)
+            return
+        end
+
+        if not selectedEgg or selectedEgg == "No eggs available" then
+            Library:Notify("No eggs available for reroll", 3)
+            return
+        end
+
+        local slotName = string.match(selectedSlot, "^(%w+)")
+        local nest = findLocalNest()
+        if not nest then
+            Library:Notify("Nest not found", 3)
+            return
+        end
+
+        local slotsFolder = nest:FindFirstChild("Slots")
+        if not slotsFolder then
+            Library:Notify("Slots folder not found", 3)
+            return
+        end
+
+        local slot = slotsFolder:FindFirstChild(slotName)
+        if not slot then
+            Library:Notify("Slot not found", 3)
+            return
+        end
+
+        local args = {
+            "Eggs",
+            selectedEgg,
+            slot,
+            1,
+            {}
+        }
+
+        pcall(function()
+            nestRemote:FireServer(unpack(args))
+        end)
+    end)
+
+    -- Roll Egg
+    NestGroup:AddButton("Roll Egg", function()
+        local selectedSlot = Options.SlotSelect and Options.SlotSelect.Value or nil
+        local selectedEgg = Options.RerollEggSelect and Options.RerollEggSelect.Value or nil
+
+        if not selectedSlot or selectedSlot == "No active slots" then
+            Library:Notify("Select a slot first", 3)
+            return
+        end
+
+        if not selectedEgg or selectedEgg == "No eggs available" then
+            Library:Notify("No eggs available for roll", 3)
+            return
+        end
+
+        local slotName = string.match(selectedSlot, "^(%w+)")
+        local nest = findLocalNest()
+        if not nest then
+            Library:Notify("Nest not found", 3)
+            return
+        end
+
+        local slotsFolder = nest:FindFirstChild("Slots")
+        if not slotsFolder then
+            Library:Notify("Slots folder not found", 3)
+            return
+        end
+
+        local slot = slotsFolder:FindFirstChild(slotName)
+        if not slot then
+            Library:Notify("Slot not found", 3)
+            return
+        end
+
+        local args = {
+            "Eggs",
+            selectedEgg,
+            slot,
+            1,
+            {}
+        }
+
+        pcall(function()
+            nestRemote:FireServer(unpack(args))
+        end)
+    end)
+
+    local availableEggs = getAvailableEggs()
+    NestGroup:AddDropdown("BuyEggSelect", {
+        Values = availableEggs,
+        Default = availableEggs[1] or nil,
+        Multi = false,
+        Text = "Egg to Buy",
+        Searchable = true,
+    })
+
+    NestGroup:AddInput("BuyEggAmount", {
+        Default = "1",
+        Numeric = true,
+        Finished = false,
+        ClearTextOnFocus = false,
+        Text = "Egg Amount",
+        Tooltip = "Amount of eggs to buy (from 1 to 1000)",
+        Placeholder = "Enter amount (1-1000)",
+        MaxLength = 4,
+    })
+
+    NestGroup:AddButton("Buy Egg", function()
+        local selectedEgg = Options.BuyEggSelect and Options.BuyEggSelect.Value or nil
+        local amountStr = Options.BuyEggAmount and Options.BuyEggAmount.Value or "1"
+        local amount = tonumber(amountStr)
+
+        if not selectedEgg then
+            Library:Notify("Select an egg first", 3)
+            return
+        end
+
+        if not amount then
+            Library:Notify("Enter a valid number", 3)
+            return
+        end
+
+        if amount < 1 or amount > 1000 then
+            Library:Notify("Allowed values: from 1 to 1000", 3)
+            return
+        end
+
+        local args = {
+            "Eggs",
+            selectedEgg,
+            amount
+        }
+
+        pcall(function()
+            purchaseRemote:FireServer(unpack(args))
+        end)
+    end)
+
+    NestGroup:AddButton("Update Egg List", function()
+        local newEggs = getAvailableEggs()
+        Options.BuyEggSelect:SetValues(newEggs)
+        if #newEggs > 0 and not Options.BuyEggSelect.Value then
+            Options.BuyEggSelect:SetValue(newEggs[1])
+        end
+    end)
+
+    local availableUpgrades = getAvailableUpgrades()
+    NestGroup:AddDropdown("UpgradeSelect", {
+        Values = availableUpgrades,
+        Default = availableUpgrades[1] or nil,
+        Multi = false,
+        Text = "Upgrade",
+        Searchable = true,
+    })
+
+    NestGroup:AddButton("Buy Upgrade", function()
+        local selectedUpgrade = Options.UpgradeSelect and Options.UpgradeSelect.Value or nil
+
+        if not selectedUpgrade then
+            Library:Notify("Select an upgrade first", 3)
+            return
+        end
+
+        local args = {
+            selectedUpgrade
+        }
+
+        pcall(function()
+            upgradeRemote:FireServer(unpack(args))
+        end)
+    end)
+
+    NestGroup:AddButton("Update Upgrade List", function()
+        local newUpgrades = getAvailableUpgrades()
+        Options.UpgradeSelect:SetValues(newUpgrades)
+        if #newUpgrades > 0 and not Options.UpgradeSelect.Value then
+            Options.UpgradeSelect:SetValue(newUpgrades[1])
+        end
+    end)
+
+    task.spawn(function()
+        while true do
+            task.wait(5)
+            updateInventoryDisplay()
+        end
+    end)
+
+    updateInventoryDisplay()
+end
