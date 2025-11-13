@@ -469,7 +469,7 @@
                     if character then
                         local humanoid = character:FindFirstChildOfClass("Humanoid")
                         if humanoid then
-                            humanoid.WalkSpeed = 16
+                            humanoid.WalkSpeed = 24
                         end
                     end
                 end
@@ -494,7 +494,7 @@
             if character then
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid then
-                    humanoid.WalkSpeed = 16
+                    humanoid.WalkSpeed = 24
                 end
             end
             if Toggles.EnableSpeed then
@@ -611,61 +611,42 @@
                 return PlayerGui:FindFirstChild("Hud")
             end)
             if not success or not hud then 
-                    warn("[Silent Sell] Hud not found")
                 return nil, nil 
             end
-            
             local stats = hud:FindFirstChild("Stats")
             if not stats then 
-                warn("[Silent Sell] Stats not found")
                 return nil, nil 
             end
-            
             local storage = stats:FindFirstChild("Storage")
             if not storage then 
-                warn("[Silent Sell] Storage not found")
                 return nil, nil 
             end
-            
             local content = storage:FindFirstChild("Content")
             if not content then 
-                warn("[Silent Sell] Content not found")
                 return nil, nil 
             end
-            
             local currentStorage = content:FindFirstChild("CurrentStorage")
             local maxStorage = content:FindFirstChild("MaxStorage")
-            
             if not currentStorage then 
-                warn("[Silent Sell] CurrentStorage not found")
                 return nil, nil 
             end
             if not maxStorage then 
-                        warn("[Silent Sell] MaxStorage not found")
                 return nil, nil 
             end
-            
             local currentText = currentStorage.Text
             local maxText = maxStorage.Text
-            
             if not currentText or currentText == "" then 
-                warn("[Silent Sell] CurrentStorage.Text empty")
                 return nil, nil 
             end
             if not maxText or maxText == "" then 
-                warn("[Silent Sell] MaxStorage.Text empty")
                 return nil, nil 
             end
-            
             local current = parseStorageValue(currentText)
             local max = parseStorageValue(maxText)
-            
             if not current then 
-                warn("[Silent Sell] Failed to convert CurrentStorage to number:", currentText)
                 return nil, nil 
             end
             if not max then 
-                warn("[Silent Sell] Failed to convert MaxStorage to number:", maxText)
                 return nil, nil 
             end
             
@@ -674,41 +655,28 @@
 
         local function teleportQueenPointToPlayer()
             if not queenPoint then 
-                warn("[Silent Sell] QueenPoint not found for teleportation")
                 return false
             end
-            
             local character = player.Character
             if not character then 
-                    warn("[Silent Sell] Character not found")
                 return false
             end
-            
             local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
             if not humanoidRootPart then 
-                warn("[Silent Sell] HumanoidRootPart not found")
                 return false
             end
-            
             local camera = Workspace.CurrentCamera
             if not camera then 
-                warn("[Silent Sell] Camera not found")
                 return false
             end
-            
             local lookDirection = camera.CFrame.LookVector
-            
             local targetPosition = humanoidRootPart.Position + (lookDirection * 0.2)
-            
             local success, err = pcall(function()
                 queenPoint:PivotTo(CFrame.new(targetPosition))
             end)
-            
             if not success then
-                warn("[Silent Sell] Error teleporting QueenPoint:", err)
                 return false
             end
-
             return true
         end
 
@@ -718,36 +686,26 @@
                 task.wait(0.05)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end)
-            
             if not success then
-                warn("[Silent Sell] Error pressing E:", err)
                 return false
             end
-            
             return true
         end
 
         local function setupAutoSell()
-            
             local nest = findLocalNest()
             if not nest then 
-                warn("[Silent Sell] Nest not found!")
                 return 
             end
-            
             queenPoint = nest:FindFirstChild("QueenPoint")
             if not queenPoint then 
-                warn("[Silent Sell] QueenPoint not found in nest!")
                 return 
             end
-            
             local prompt = queenPoint:FindFirstChild("ProximityPrompt")
             if not prompt then 
-                warn("[Silent Sell] ProximityPrompt not found in QueenPoint!")
                 return 
             end
             if not prompt:IsA("ProximityPrompt") then 
-                warn("[Silent Sell] Object is not a ProximityPrompt!")
                 return 
             end
 
@@ -796,24 +754,18 @@
                     task.spawn(function()
                         local teleportSuccess = teleportQueenPointToPlayer()
                         if not teleportSuccess then
-                            warn("[Silent Sell] Failed to teleport QueenPoint")
                             isSelling = false
                             return
                         end
-                        
-                            task.wait(0.1)
-                        
+                        task.wait(0.1)
                         local pressSuccess = pressE()
                         if not pressSuccess then
-                            warn("[Silent Sell] Failed to press E")
                             isSelling = false
                             return
                         end
-                        
                         local previousValue = current
                         local checkCount = 0
                         local maxChecks = 20
-                        
                         while checkCount < maxChecks and autoSellEnabled do
                             task.wait(0.1)
                             local newCurrent, newMax = getInventoryValues()
@@ -827,11 +779,6 @@
                             end
                             checkCount = checkCount + 1
                         end
-                        
-                        if checkCount >= maxChecks then
-                            warn(string.format("[Silent Sell] Timeout exceeded. Value did not change. Current: %d", previousValue))
-                        end
-                        
                         isSelling = false   
                     end)
                 end
@@ -1417,7 +1364,6 @@
             end)
         end)
 
-        -- Roll Egg
         NestGroup:AddButton("Roll Egg", function()
             local selectedSlot = Options.SlotSelect and Options.SlotSelect.Value or nil
             local selectedEgg = Options.RerollEggSelect and Options.RerollEggSelect.Value or nil
@@ -1464,7 +1410,6 @@
             end)
         end)
 
-        -- Информация об инвентаре
         local inventoryLabelObject
 
         local function updateInventoryDisplay()
@@ -1530,7 +1475,6 @@
             end
         end)
 
-        -- Auto Buy Eggs
         local availableEggs = getAvailableEggs()
         NestGroup:AddDropdown("BuyEggSelect", {
             Values = availableEggs,
@@ -1548,7 +1492,6 @@
                 return
             end
 
-            -- Всегда покупаем только 1 яйцо
             local amount = 1
 
             local args = {
@@ -1570,7 +1513,6 @@
             end
         end)
 
-        -- Auto Upgrade
         local availableUpgrades = getAvailableUpgrades()
         NestGroup:AddDropdown("UpgradeSelect", {
             Values = availableUpgrades,
@@ -1605,7 +1547,6 @@
             end
         end)
 
-        -- Автоматическое обновление инвентаря каждые 5 секунд
         task.spawn(function()
             while true do
                 task.wait(5)
@@ -1613,11 +1554,9 @@
             end
         end)
 
-        -- Инициализация отображения инвентаря
         updateInventoryDisplay()
     end
 
-    -- Auto Upgrade Skilltree
     do
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
         
@@ -1629,7 +1568,6 @@
         
         local skillsData = nil
         
-        -- Функция для загрузки данных о скиллах
         local function loadSkillsData()
             if not skillsModule then return nil end
             
@@ -1639,16 +1577,12 @@
                     return data
                 end
             elseif skillsModule:IsA("Script") then
-                -- Если это Script, нужно парсить Source
-                -- Но обычно это ModuleScript, так что пока оставим так
             end
             return nil
         end
         
-        -- Загружаем данные о скиллах
         skillsData = loadSkillsData()
         
-        -- Функция для получения категорий
         local function getSkillCategories()
             if not skillsData then return {} end
             
@@ -1662,7 +1596,6 @@
             return categories
         end
         
-        -- Функция для получения скиллов в категории
         local function getSkillsInCategory(categoryName)
             if not skillsData or not categoryName then return {} end
             
@@ -1785,12 +1718,12 @@
         end)
     end
 
-    -- Auto Farm Quests
     do
         local Players = game:GetService("Players")
         local Workspace = game:GetService("Workspace")
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
         local VirtualInputManager = game:GetService("VirtualInputManager")
+        local RunService = game:GetService("RunService")
         
         local LocalPlayer = Players.LocalPlayer
         local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -1944,13 +1877,11 @@
             
             local harvestMatch = string.match(lowerText, "harvest from (.+) field")
             if harvestMatch then
-                -- Извлекаем оригинальное название зоны из исходного текста
                 local zoneMatch = string.match(originalText, "Harvest from (.+) Field")
                 if not zoneMatch then
                     zoneMatch = string.match(originalText, "harvest from (.+) field")
                 end
                 if zoneMatch then
-                    -- Убираем лишние пробелы
                     zoneMatch = string.gsub(zoneMatch, "^%s+", "")
                     zoneMatch = string.gsub(zoneMatch, "%s+$", "")
                     return {
@@ -1959,15 +1890,11 @@
                     }
                 end
             end
-            
-            -- Проверяем на "kill [number] [Bug]" или "kill [Bug]"
             local killMatch = string.match(lowerText, "kill%s+%d+%s+(.+)")
             if not killMatch then
                 killMatch = string.match(lowerText, "kill%s+(.+)")
             end
-            
             if killMatch then
-                -- Извлекаем оригинальное название бага из исходного текста
                 local bugMatch = string.match(originalText, "kill%s+%d+%s+(.+)")
                 if not bugMatch then
                     bugMatch = string.match(originalText, "Kill%s+%d+%s+(.+)")
@@ -2019,40 +1946,28 @@
         end
         
         local function completeQuest()
-            
             local nest = findLocalNest()
             if not nest then 
-                warn("[Quest] Nest not found!")
                 return false 
             end
-            
             local queenPoint = nest:FindFirstChild("QueenPoint")
             if not queenPoint then 
-                warn("[Quest] QueenPoint not found in nest!")
                 return false 
             end
-            
             local character = LocalPlayer.Character
             if not character then 
-                warn("[Quest] Character not found")
                 return false 
             end
-            
             local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
             if not humanoidRootPart then 
-                warn("[Quest] HumanoidRootPart not found")
                 return false 
             end
-            
             local camera = Workspace.CurrentCamera
             if not camera then 
-                warn("[Quest] Camera not found")
                 return false 
             end
-            
             local lookDirection = camera.CFrame.LookVector
             local targetPosition = humanoidRootPart.Position + (lookDirection * 0.2)
-            
             local teleportSuccess, teleportErr = pcall(function()
                 if queenPoint:IsA("BasePart") then
                     queenPoint:PivotTo(CFrame.new(targetPosition))
@@ -2060,9 +1975,7 @@
                     queenPoint:PivotTo(CFrame.new(targetPosition))
                 end
             end)
-            
             if not teleportSuccess then
-                warn("[Quest] Teleport error:", teleportErr)
                 return false
             end
             
@@ -2193,6 +2106,267 @@
             stopQuestFarming()
             if Toggles.AutoFarmQuestsToggle then
                 Toggles.AutoFarmQuestsToggle:SetValue(false)
+            end
+        end)
+        
+        local claimOrbsRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("ClaimOrbs")
+        local autoCollectOrbsEnabled = false
+        local collectOrbsConnection = nil
+        local collectedOrbIDs = {}
+        local orbIDMap = {}
+        local orbModels = {}
+        
+        local spawnOrbRemote = ReplicatedStorage:FindFirstChild("Remotes")
+        if spawnOrbRemote then
+            spawnOrbRemote = spawnOrbRemote:FindFirstChild("Misc")
+            if spawnOrbRemote then
+                spawnOrbRemote = spawnOrbRemote:FindFirstChild("SpawnOrb")
+                if spawnOrbRemote and spawnOrbRemote:IsA("RemoteEvent") then
+                    spawnOrbRemote.OnClientEvent:Connect(function(...)
+                        local args = {...}
+                        local orbID = nil
+                        for i = #args, 1, -1 do
+                            local arg = args[i]
+                            if type(arg) == "number" and arg > 0 then
+                                orbID = arg
+                                break
+                            end
+                        end
+                        if not orbID then
+                            for i = 1, #args do
+                                local arg = args[i]
+                                if type(arg) == "number" and arg > 0 then
+                                    orbID = arg
+                                    break
+                                end
+                            end
+                        end
+                        if orbID and type(orbID) == "number" then
+                            if not orbIDMap[orbID] then
+                                table.insert(collectedOrbIDs, orbID)
+                                orbIDMap[orbID] = true
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+        
+        local function findOrbsInWorkspace()
+            local orbs = {}
+            for _, obj in ipairs(Workspace:GetChildren()) do
+                if obj:IsA("Model") then
+                    local name = obj.Name
+                    if name == "ItemOrb" or name == "FoodOrb" then
+                        table.insert(orbs, obj)
+                    end
+                end
+            end
+            return orbs
+        end
+        
+        local function getOrbID(orb)
+            if orb:GetAttribute("ID") then
+                return orb:GetAttribute("ID")
+            elseif orb:GetAttribute("OrbID") then
+                return orb:GetAttribute("OrbID")
+            end
+            if orb.PrimaryPart then
+                if orb.PrimaryPart:GetAttribute("ID") then
+                    return orb.PrimaryPart:GetAttribute("ID")
+                elseif orb.PrimaryPart:GetAttribute("OrbID") then
+                    return orb.PrimaryPart:GetAttribute("OrbID")
+                end
+            end
+            for _, child in ipairs(orb:GetDescendants()) do
+                if (child:IsA("StringValue") or child:IsA("IntValue")) and (child.Name == "ID" or child.Name == "OrbID") then
+                    return tonumber(child.Value)
+                end
+            end
+            local idMatch = string.match(orb.Name, "%d+")
+            if idMatch then
+                return tonumber(idMatch)
+            end
+            return nil
+        end
+        
+        local lastPlayerPosition = nil
+        local positionUpdateConnection = nil
+        
+        local function updatePlayerPosition()
+            local character = LocalPlayer.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                lastPlayerPosition = character.HumanoidRootPart.CFrame
+            end
+        end
+        
+        local function startPositionTracking()
+            if positionUpdateConnection then return end
+            positionUpdateConnection = RunService.Heartbeat:Connect(function()
+                updatePlayerPosition()
+            end)
+        end
+        
+        local function stopPositionTracking()
+            if positionUpdateConnection then
+                positionUpdateConnection:Disconnect()
+                positionUpdateConnection = nil
+            end
+        end
+        
+        local function teleportToOrb(orb)
+            local character = LocalPlayer.Character
+            if not character then
+                return false
+            end
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if not humanoidRootPart then
+                return false
+            end
+            if not orb then
+                return false
+            end
+            local success, err = pcall(function()
+                local targetPosition = nil
+                if orb.PrimaryPart then
+                    targetPosition = orb.PrimaryPart.Position
+                else
+                    for _, part in ipairs(orb:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            targetPosition = part.Position
+                            break
+                        end
+                    end
+                end
+                if not targetPosition then
+                    return false
+                end
+                local targetCFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
+                character:PivotTo(targetCFrame)
+            end)
+            return success
+        end
+        
+        local function teleportBack()
+            if not lastPlayerPosition then
+                return false
+            end
+            local character = LocalPlayer.Character
+            if not character then
+                return false
+            end
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if not humanoidRootPart then
+                return false
+            end
+            local success, err = pcall(function()
+                character:PivotTo(lastPlayerPosition)
+            end)
+            return success
+        end
+        
+        local function collectOrbs()
+            local orbs = findOrbsInWorkspace()
+            if #orbs > 0 then
+                for i, orb in ipairs(orbs) do
+                    if not autoCollectOrbsEnabled then
+                        break
+                    end
+                    if not orb or not orb.Parent then
+                        teleportBack()
+                        break
+                    end
+                    local teleportSuccess = teleportToOrb(orb)
+                    if teleportSuccess then
+                        local orbRemoved = false
+                        local maxWaitTime = 5
+                        local elapsedTime = 0
+                        while not orbRemoved and elapsedTime < maxWaitTime and autoCollectOrbsEnabled do
+                            task.wait(0.1)
+                            elapsedTime = elapsedTime + 0.1
+                            if not orb or not orb.Parent then
+                                orbRemoved = true
+                                teleportBack()
+                                break
+                            end
+                        end
+                        if not orbRemoved then
+                            teleportBack()
+                        end
+                        task.wait(0.1)
+                    end
+                end
+            end
+            local orbIDs = {}
+            if #collectedOrbIDs > 0 then
+                for _, id in ipairs(collectedOrbIDs) do
+                    if orbIDMap[id] then
+                        table.insert(orbIDs, id)
+                    end
+                end
+            end
+            if #orbIDs > 0 then
+                local args = {orbIDs}
+                pcall(function()
+                    claimOrbsRemote:FireServer(unpack(args))
+                end)
+                for _, id in ipairs(orbIDs) do
+                    orbIDMap[id] = false
+                    for i = #collectedOrbIDs, 1, -1 do
+                        if collectedOrbIDs[i] == id then
+                            table.remove(collectedOrbIDs, i)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+        
+        local function startAutoCollectOrbs()
+            if collectOrbsConnection then
+                return
+            end
+            updatePlayerPosition()
+            startPositionTracking()
+            autoCollectOrbsEnabled = true
+            collectOrbsConnection = task.spawn(function()
+                while autoCollectOrbsEnabled do
+                    collectOrbs()
+                    task.wait(0.5)
+                end
+            end)
+        end
+        
+        local function stopAutoCollectOrbs()
+            autoCollectOrbsEnabled = false
+            if collectOrbsConnection then
+                task.cancel(collectOrbsConnection)
+                collectOrbsConnection = nil
+            end
+            stopPositionTracking()
+            teleportBack()
+            collectedOrbIDs = {}
+            orbIDMap = {}
+        end
+        
+        QuestGroup:AddToggle("AutoCollectOrbsToggle", {
+            Text = "Auto Collect Orbs",
+            Default = false,
+            Callback = function(enabled)
+                if enabled then
+                    startAutoCollectOrbs()
+                    Library:Notify("Auto Collect Orbs enabled", 3)
+                else
+                    stopAutoCollectOrbs()
+                    Library:Notify("Auto Collect Orbs disabled", 3)
+                end
+            end,
+        })
+        
+        table.insert(CleanupFunctions, function()
+            stopAutoCollectOrbs()
+            if Toggles.AutoCollectOrbsToggle then
+                Toggles.AutoCollectOrbsToggle:SetValue(false)
             end
         end)
     end
