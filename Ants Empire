@@ -832,6 +832,7 @@
         local gameContent = ReplicatedStorage:WaitForChild("GameContent")
         local backpacksFolder = gameContent:WaitForChild("Backpacks")
         local toolsFolder = gameContent:WaitForChild("Tools")
+        local mountsFolder = gameContent:WaitForChild("Mounts")
 
         local function getItemNames(folder)
             local names = {}
@@ -893,8 +894,10 @@
 
         local toolNames = getItemNames(toolsFolder)
         local backpackNames = getItemNames(backpacksFolder)
+        local mountNames = getItemNames(mountsFolder)
         table.insert(toolNames, 1, "None")
         table.insert(backpackNames, 1, "None")
+        table.insert(mountNames, 1, "None")
 
         ShopGroup:AddDropdown("ShopTool", {
             Values = toolNames,
@@ -928,9 +931,26 @@
             end,
         })
 
+        ShopGroup:AddDropdown("ShopMount", {
+            Values = mountNames,
+            Default = mountNames[1],
+            Multi = false,
+            Text = "Mounts",
+            Searchable = true,
+            FormatDisplayValue = function(value)
+                if value == "None" or value == nil or value == "" then return "None" end
+                local price = getItemPriceFromFolder(mountsFolder, value)
+                if price and price > 0 then
+                    return string.format("%s | Price: %d", value, price)
+                end
+                return value
+            end,
+        })
+
         ShopGroup:AddButton("Buy Selected Item", function()
             local tool = Options.ShopTool and Options.ShopTool.Value or nil
             local backpack = Options.ShopBackpack and Options.ShopBackpack.Value or nil
+            local mount = Options.ShopMount and Options.ShopMount.Value or nil
 
             local category, itemName
             if tool and tool ~= "" and tool ~= "None" then
@@ -939,10 +959,13 @@
             elseif backpack and backpack ~= "" and backpack ~= "None" then
                 category = "Backpacks"
                 itemName = backpack
+            elseif mount and mount ~= "" and mount ~= "None" then
+                category = "Mounts"
+                itemName = mount
             end
 
             if not category or not itemName then
-                Library:Notify("Select an item in Tools or Backpacks", 3)
+                Library:Notify("Select an item in Tools, Backpacks or Mounts", 3)
                 return
             end
 
@@ -955,15 +978,21 @@
         ShopGroup:AddButton("Update Item List", function()
             local newTools = getItemNames(toolsFolder)
             local newBackpacks = getItemNames(backpacksFolder)
+            local newMounts = getItemNames(mountsFolder)
             table.insert(newTools, 1, "None")
             table.insert(newBackpacks, 1, "None")
+            table.insert(newMounts, 1, "None")
             Options.ShopTool:SetValues(newTools)
             Options.ShopBackpack:SetValues(newBackpacks)
+            Options.ShopMount:SetValues(newMounts)
             if #newTools > 0 and not Options.ShopTool.Value then
                 Options.ShopTool:SetValue(newTools[1])
             end
             if #newBackpacks > 0 and not Options.ShopBackpack.Value then
                 Options.ShopBackpack:SetValue(newBackpacks[1])
+            end
+            if #newMounts > 0 and not Options.ShopMount.Value then
+                Options.ShopMount:SetValue(newMounts[1])
             end
         end)
 
