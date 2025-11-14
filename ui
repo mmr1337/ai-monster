@@ -82,18 +82,22 @@ local function ApplyCornerRadius(obj, radius)
 end
 
 -- Window
-function CustomUILib:Window(title, icon)
+function CustomUILib:Window(title, icon, toggleKey)
     title = title or "Custom UI"
+    toggleKey = toggleKey or Enum.KeyCode.RightShift
     
     local window = {}
     window._elements = {}
     window._tabs = {}
+    window._visible = true
+    window._toggleKey = toggleKey
     
     -- Main ScreenGui
     local screenGui = Create("ScreenGui", {
         Name = title .. "_UI",
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         ResetOnSpawn = false,
+        DisplayOrder = 100,
         Parent = PlayerGui,
     })
     
@@ -104,12 +108,14 @@ function CustomUILib:Window(title, icon)
         Position = UDim2.new(0.5, -250, 0.5, -200),
         BackgroundColor3 = currentTheme.Background,
         BorderSizePixel = 0,
+        ZIndex = 1,
         Parent = screenGui,
         Children = {
             Create("UIStroke", {
                 Color = currentTheme.Border,
                 Thickness = 1,
                 Transparency = 0.5,
+                ZIndex = 2,
             })
         }
     })
@@ -122,6 +128,7 @@ function CustomUILib:Window(title, icon)
         Position = UDim2.new(0, 0, 0, 0),
         BackgroundColor3 = currentTheme.Secondary,
         BorderSizePixel = 0,
+        ZIndex = 3,
         Parent = mainFrame,
     })
     ApplyCornerRadius(titleBar, 8)
@@ -137,6 +144,7 @@ function CustomUILib:Window(title, icon)
         TextSize = 16,
         Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 4,
         Parent = titleBar,
     })
     
@@ -151,12 +159,13 @@ function CustomUILib:Window(title, icon)
         TextSize = 20,
         Font = Enum.Font.GothamBold,
         BorderSizePixel = 0,
+        ZIndex = 5,
         Parent = titleBar,
     })
     ApplyCornerRadius(closeBtn, 4)
     
     closeBtn.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
+        window:Hide()
     end)
     
     closeBtn.MouseEnter:Connect(function()
@@ -173,7 +182,15 @@ function CustomUILib:Window(title, icon)
         Size = UDim2.new(1, -20, 0, 40),
         Position = UDim2.new(0, 10, 0, 45),
         BackgroundTransparency = 1,
+        ZIndex = 3,
         Parent = mainFrame,
+    })
+    
+    local tabsLayout = Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        Padding = UDim.new(0, 5),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = tabsContainer,
     })
     
     -- Content frame
@@ -183,6 +200,7 @@ function CustomUILib:Window(title, icon)
         Position = UDim2.new(0, 10, 0, 90),
         BackgroundTransparency = 1,
         ClipsDescendants = true,
+        ZIndex = 2,
         Parent = mainFrame,
     })
     
@@ -212,9 +230,11 @@ function CustomUILib:Window(title, icon)
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
+    -- Optimized dragging with RenderStepped
+    local dragConnection
+    dragConnection = RunService.RenderStepped:Connect(function()
+        if dragging and dragInput then
+            local delta = dragInput.Position - dragStart
             mainFrame.Position = UDim2.new(
                 startPos.X.Scale,
                 startPos.X.Offset + delta.X,
@@ -224,10 +244,56 @@ function CustomUILib:Window(title, icon)
         end
     end)
     
+    -- Toggle visibility function
+    function window:Toggle()
+        window._visible = not window._visible
+        if window._visible then
+            screenGui.Enabled = true
+            mainFrame.Size = UDim2.new(0, 500, 0, 400)
+            mainFrame.BackgroundTransparency = 0
+        else
+            mainFrame.Size = UDim2.new(0, 0, 0, 0)
+            mainFrame.BackgroundTransparency = 1
+            task.wait(0.1)
+            screenGui.Enabled = false
+        end
+    end
+    
+    function window:Show()
+        if not window._visible then
+            window:Toggle()
+        end
+    end
+    
+    function window:Hide()
+        if window._visible then
+            window:Toggle()
+        end
+    end
+    
+    -- Bind toggle key
+    local toggleConnection
+    toggleConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == window._toggleKey then
+            window:Toggle()
+        end
+    end)
+    
+    -- Cleanup on destroy
+    screenGui.AncestryChanged:Connect(function()
+        if not screenGui.Parent then
+            if dragConnection then dragConnection:Disconnect() end
+            if toggleConnection then toggleConnection:Disconnect() end
+        end
+    end)
+    
     window._screenGui = screenGui
     window._mainFrame = mainFrame
     window._tabsContainer = tabsContainer
     window._contentFrame = contentFrame
+    window._dragConnection = dragConnection
+    window._toggleConnection = toggleConnection
     
     function window:Tab(name, icon)
         icon = icon or "⚙"
@@ -239,13 +305,14 @@ function CustomUILib:Window(title, icon)
         local tabBtn = Create("TextButton", {
             Name = name .. "_Tab",
             Size = UDim2.new(0, 100, 1, 0),
-            Position = UDim2.new(0, #window._tabs * 105, 0, 0),
             BackgroundColor3 = currentTheme.Secondary,
             Text = icon .. " " .. name,
             TextColor3 = currentTheme.TextSecondary,
             TextSize = 13,
             Font = Enum.Font.Gotham,
             BorderSizePixel = 0,
+            ZIndex = 4,
+            LayoutOrder = #window._tabs + 1,
             Parent = tabsContainer,
         })
         ApplyCornerRadius(tabBtn, 4)
@@ -261,6 +328,7 @@ function CustomUILib:Window(title, icon)
             ScrollBarImageColor3 = currentTheme.Accent,
             CanvasSize = UDim2.new(0, 0, 0, 0),
             Visible = #window._tabs == 0,
+            ZIndex = 3,
             Parent = contentFrame,
         })
         
@@ -279,8 +347,19 @@ function CustomUILib:Window(title, icon)
             Parent = tabContent,
         })
         
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            tabContent.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+        -- Optimized content size update
+        local contentSizeConnection
+        contentSizeConnection = RunService.RenderStepped:Connect(function()
+            if tabContent.Parent then
+                local contentSize = layout.AbsoluteContentSize.Y
+                if contentSize > 0 then
+                    tabContent.CanvasSize = UDim2.new(0, 0, 0, contentSize + 20)
+                end
+            else
+                if contentSizeConnection then
+                    contentSizeConnection:Disconnect()
+                end
+            end
         end)
         
         -- Tab button interactions
@@ -396,8 +475,19 @@ function CustomUILib:Window(title, icon)
                 Parent = contentContainer,
             })
             
-            contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                groupFrame.Size = UDim2.new(0, 220, 0, contentLayout.AbsoluteContentSize.Y + 50)
+            -- Optimized groupbox size update
+            local groupSizeConnection
+            groupSizeConnection = RunService.RenderStepped:Connect(function()
+                if groupFrame.Parent then
+                    local contentSize = contentLayout.AbsoluteContentSize.Y
+                    if contentSize > 0 then
+                        groupFrame.Size = UDim2.new(0, 220, 0, contentSize + 50)
+                    end
+                else
+                    if groupSizeConnection then
+                        groupSizeConnection:Disconnect()
+                    end
+                end
             end)
             
             groupbox._frame = groupFrame
@@ -421,8 +511,19 @@ function CustomUILib:Window(title, icon)
                     LayoutOrder = #groupbox._elements + 1,
                 })
                 
-                label:GetPropertyChangedSignal("TextBounds"):Connect(function()
-                    label.Size = UDim2.new(1, 0, 0, label.TextBounds.Y)
+                -- Optimized label size update
+                local labelSizeConnection
+                labelSizeConnection = RunService.RenderStepped:Connect(function()
+                    if label.Parent then
+                        local textBounds = label.TextBounds.Y
+                        if textBounds > 0 then
+                            label.Size = UDim2.new(1, 0, 0, textBounds)
+                        end
+                    else
+                        if labelSizeConnection then
+                            labelSizeConnection:Disconnect()
+                        end
+                    end
                 end)
                 
                 table.insert(groupbox._elements, label)
@@ -642,7 +743,7 @@ function CustomUILib:Window(title, icon)
                             ScrollBarThickness = 4,
                             ScrollBarImageColor3 = currentTheme.Accent,
                             CanvasSize = UDim2.new(0, 0, 0, #options.Values * 28),
-                            ZIndex = 10,
+                            ZIndex = 20,
                             Parent = dropdownFrame,
                         })
                         ApplyCornerRadius(listFrame, 4)
@@ -822,8 +923,8 @@ function CustomUILib:Window(title, icon)
                     BackgroundColor3 = Color3.fromRGB(255, 255, 255),
                     Text = "",
                     BorderSizePixel = 0,
+                    ZIndex = 15,
                     Parent = sliderBg,
-                    ZIndex = 2,
                 })
                 ApplyCornerRadius(sliderButton, 7)
                 
@@ -999,7 +1100,7 @@ function CustomUILib:Window(title, icon)
             BackgroundColor3 = currentTheme.Background,
             BorderSizePixel = 0,
             Parent = screenGui,
-            ZIndex = 100,
+            ZIndex = 200,
             Children = {
                 Create("UIStroke", {
                     Color = currentTheme.Border,
