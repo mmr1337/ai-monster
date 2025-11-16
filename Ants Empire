@@ -44,7 +44,7 @@ local executorName = identifyexecutor or "AI monster"
 
 local Window = Library:CreateWindow({
     Title = executorName,
-    Footer = "by dem3x3",
+    Footer = "IF U HAVE BUGS USE VOLCANO EXEC!!!",
     Icon = 95952879196724,
     NotifySide = "Right",
     ShowCustomCursor = true,
@@ -52,8 +52,449 @@ local Window = Library:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab("Main", "user"),
+    Credits = Window:AddTab("Credits", "heart"),
+    Webhook = Window:AddTab("Webhook", "globe"),
     ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
 }
+
+do
+    local CreditsGroup = Tabs.Credits:AddLeftGroupbox("Creator", "star")
+    
+    CreditsGroup:AddLabel("Script created by dem3x3", true)
+    CreditsGroup:AddLabel("for Nexus Hub", true)
+    CreditsGroup:AddDivider()
+    
+    CreditsGroup:AddButton("Copy Discord Link", function()
+        local discordLink = "https://discord.gg/bSjDR9S4hr"
+        if setclipboard then
+            setclipboard(discordLink)
+            Library:Notify("Link copied", 3)
+        else
+            Library:Notify("Clipboard not available", 3)
+        end
+    end)
+end
+
+do
+    local HttpService = game:GetService("HttpService")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    local webhookTask = nil
+    local webhookRunning = false
+    
+    local function getInventory()
+        local inventory = {
+            starfruit = 0,
+            eggs = {},
+            allItems = {}
+        }
+
+        local inventoryGui = PlayerGui:FindFirstChild("Inventory")
+        if not inventoryGui then return inventory end
+
+        local holder = inventoryGui:FindFirstChild("Holder")
+        if not holder then return inventory end
+
+        local list = holder:FindFirstChild("List")
+        if not list then return inventory end
+
+        for _, itemSlot in ipairs(list:GetChildren()) do
+            if itemSlot:IsA("Frame") and itemSlot.Name == "ItemSlot" then
+                
+                local iconHolder = itemSlot:FindFirstChild("IconHolder")
+                if iconHolder then
+                    local button1 = iconHolder:FindFirstChild("Button")
+                    if button1 and button1:IsA("ImageButton") then
+                        local amountLabel = button1:FindFirstChild("Amount")
+                        if amountLabel and amountLabel:IsA("TextLabel") then
+                            local amountText = amountLabel.Text
+                            local amount = tonumber(string.match(amountText, "%d+")) or 0
+                            
+                            local button2 = itemSlot:FindFirstChild("Button")
+                            if button2 and button2:IsA("ImageButton") then
+                                local textHolder = button2:FindFirstChild("TextHolder")
+                                if textHolder then
+                                    local itemNameLabel = textHolder:FindFirstChild("ItemName")
+                                    if itemNameLabel and itemNameLabel:IsA("TextLabel") then
+                                        local itemName = itemNameLabel.Text
+                                        
+                                        table.insert(inventory.allItems, {
+                                            name = itemName,
+                                            amount = amount,
+                                            slotName = itemSlot.Name
+                                        })
+                                        
+                                        if itemName == "Starfruit" then
+                                            inventory.starfruit = amount
+                                        elseif string.find(itemName, "Egg") then
+                                            local found = false
+                                            for _, eggData in ipairs(inventory.eggs) do
+                                                if eggData.name == itemName then
+                                                    eggData.amount = amount
+                                                    found = true
+                                                    break
+                                                end
+                                            end
+                                            if not found then
+                                                table.insert(inventory.eggs, {
+                                                    name = itemName,
+                                                    amount = amount
+                                                })
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        return inventory
+    end
+    
+    local function getFood()
+        local hud = PlayerGui:FindFirstChild("Hud")
+        if not hud then return nil end
+        
+        local stats = hud:FindFirstChild("Stats")
+        if not stats then return nil end
+        
+        local food = stats:FindFirstChild("Food")
+        if not food then return nil end
+        
+        local content = food:FindFirstChild("Content")
+        if not content then return nil end
+        
+        local foodLabel = content:FindFirstChild("Food")
+        if not foodLabel or not foodLabel:IsA("TextLabel") then return nil end
+        
+        local foodText = foodLabel.Text
+        if not foodText or foodText == "" then return nil end
+        
+        return foodText
+    end
+    
+    local function getSelectedDataTypes(dataTypesRaw)
+        local dataTypes = {}
+        
+        if not dataTypesRaw then
+            return dataTypes
+        end
+        
+        if type(dataTypesRaw) == "string" then
+            table.insert(dataTypes, dataTypesRaw)
+        elseif type(dataTypesRaw) == "table" then
+            for key, value in pairs(dataTypesRaw) do
+                if type(value) == "string" and value ~= "" then
+                    table.insert(dataTypes, value)
+                elseif type(key) == "number" and type(value) == "string" and value ~= "" then
+                    table.insert(dataTypes, value)
+                elseif type(key) == "number" and type(value) == "number" then
+                    local allTypes = {"Inventory", "Food"}
+                    local index = value
+                    if index >= 1 and index <= #allTypes then
+                        table.insert(dataTypes, allTypes[index])
+                    end
+                elseif type(key) == "string" and (value == true or value == nil) then
+                    table.insert(dataTypes, key)
+                end
+            end
+        end
+        
+        return dataTypes
+    end
+    
+    local function sendToWebhook(webhookURL, dataTypesRaw)
+        if not webhookURL or webhookURL == "" then
+            return false
+        end
+        
+        local dataTypes = getSelectedDataTypes(dataTypesRaw)
+        
+        if not dataTypes or #dataTypes == 0 then
+            return false
+        end
+        
+        local fields = {}
+        local hasInventory = false
+        local hasFood = false
+        
+        for _, dataType in ipairs(dataTypes) do
+            if dataType == "Inventory" then
+                hasInventory = true
+            elseif dataType == "Food" then
+                hasFood = true
+            end
+        end
+        
+        if not hasInventory and not hasFood then
+            return false
+        end
+        
+        if hasInventory then
+            local inventory = getInventory()
+            if inventory then
+                table.insert(fields, {
+                    ["name"] = "⭐ Starfruit",
+                    ["value"] = tostring(inventory.starfruit or 0),
+                    ["inline"] = true
+                })
+                
+                local eggsText = "None"
+                if inventory.eggs and #inventory.eggs > 0 then
+                    local eggsList = {}
+                    for _, eggData in ipairs(inventory.eggs) do
+                        table.insert(eggsList, eggData.name .. ": " .. tostring(eggData.amount))
+                    end
+                    eggsText = table.concat(eggsList, "\n")
+                end
+                
+                table.insert(fields, {
+                    ["name"] = "🥚 Eggs",
+                    ["value"] = eggsText,
+                    ["inline"] = true
+                })
+            end
+        end
+        
+        if hasFood then
+            local food = getFood()
+            table.insert(fields, {
+                ["name"] = "🍎 Food",
+                ["value"] = food and tostring(food) or "N/A",
+                ["inline"] = true
+            })
+        end
+        
+        table.insert(fields, {
+            ["name"] = "Player Name",
+            ["value"] = LocalPlayer.Name or "N/A",
+            ["inline"] = true
+        })
+        
+        table.insert(fields, {
+            ["name"] = "Player ID",
+            ["value"] = tostring(LocalPlayer.UserId) or "N/A",
+            ["inline"] = true
+        })
+        
+        local executorName = "Unknown"
+        local executorValue = nil
+        
+        if _G and _G.identifyexecutor then
+            if type(_G.identifyexecutor) == "function" then
+                local success, result = pcall(function() return _G.identifyexecutor() end)
+                if success then
+                    executorValue = result
+                end
+            elseif type(_G.identifyexecutor) == "string" then
+                executorValue = _G.identifyexecutor
+            end
+        end
+        
+        if not executorValue and identifyexecutor then
+            if type(identifyexecutor) == "function" then
+                local success, result = pcall(function() return identifyexecutor() end)
+                if success then
+                    executorValue = result
+                end
+            elseif type(identifyexecutor) == "string" then
+                executorValue = identifyexecutor
+            end
+        end
+        
+        executorName = executorValue or "Unknown"
+        
+        table.insert(fields, {
+            ["name"] = "Executor",
+            ["value"] = executorName,
+            ["inline"] = true
+        })
+        
+        table.insert(fields, {
+            ["name"] = "Time",
+            ["value"] = os.date("%Y-%m-%d %H:%M:%S"),
+            ["inline"] = false
+        })
+        
+        local data = {
+            ["embeds"] = {{
+                ["title"] = "📊 Player Statistics Update",
+                ["color"] = 5763719,
+                ["fields"] = fields,
+                ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                ["footer"] = {
+                    ["text"] = "Ants Empire Bot"
+                }
+            }}
+        }
+        
+        local jsonData = HttpService:JSONEncode(data)
+        
+        local success, result = pcall(function()
+            local httpRequest = nil
+            
+            if _G and type(_G.request) == "function" then
+                httpRequest = _G.request
+            elseif type(request) == "function" then
+                httpRequest = request
+            elseif type(http_request) == "function" then
+                httpRequest = http_request
+            elseif type(syn) == "table" and type(syn.request) == "function" then
+                httpRequest = syn.request
+            end
+            
+            if not httpRequest then
+                return nil
+            end
+            
+            if type(httpRequest) ~= "function" then
+                return nil
+            end
+            
+            local response = httpRequest({
+                Url = webhookURL,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = jsonData
+            })
+            
+            return response
+        end)
+        
+        return success
+    end
+    
+    local WebhookGroup = Tabs.Webhook:AddLeftGroupbox("Webhook Settings", "globe")
+    
+    local webhookInput = WebhookGroup:AddInput("WebhookURL", {
+        Text = "Webhook URL",
+        Default = "",
+        Placeholder = "https://discord.com/api/webhooks/...",
+        Numeric = false,
+        Finished = false,
+    })
+    
+    local webhookDataTypeDropdown = WebhookGroup:AddDropdown("WebhookDataTypes", {
+        Values = {"Inventory", "Food"},
+        Default = {},
+        Multi = true,
+        Text = "Data Types",
+    })
+    
+    local webhookIntervalSlider = WebhookGroup:AddSlider("WebhookInterval", {
+        Text = "Update Interval (minutes)",
+        Default = 0.167,
+        Min = 0.5,
+        Max = 120,
+        Rounding = 2,
+        Compact = false,
+    })
+    
+    WebhookGroup:AddToggle("EnableWebhook", {
+        Text = "Enable Webhook",
+        Default = false,
+        Callback = function(Value)
+            if Value then
+                if webhookTask then
+                    task.cancel(webhookTask)
+                    webhookTask = nil
+                end
+                
+                webhookRunning = true
+                local webhookURL = Options.WebhookURL.Value
+                local dataTypesRaw = Options.WebhookDataTypes.Value
+                local dataTypes = getSelectedDataTypes(dataTypesRaw)
+                
+                if not webhookURL or webhookURL == "" then
+                    Library:Notify("Please enter a webhook URL", 3)
+                    Toggles.EnableWebhook:SetValue(false)
+                    return
+                end
+                
+                if not dataTypes or #dataTypes == 0 then
+                    Library:Notify("Please select at least one data type", 3)
+                    Toggles.EnableWebhook:SetValue(false)
+                    return
+                end
+                
+                local intervalMinutes = Options.WebhookInterval.Value
+                local intervalSeconds = intervalMinutes * 60
+                
+                webhookTask = task.spawn(function()
+                    while webhookRunning do
+                        local currentDataTypesRaw = Options.WebhookDataTypes.Value
+                        local success = sendToWebhook(webhookURL, currentDataTypesRaw)
+                        if not success then
+                            Library:Notify("Failed to send webhook", 3)
+                        end
+                        
+                        task.wait(intervalSeconds)
+                    end
+                end)
+            else
+                webhookRunning = false
+                if webhookTask then
+                    task.cancel(webhookTask)
+                    webhookTask = nil
+                end
+            end
+        end
+    })
+    
+    WebhookGroup:AddButton("Test Webhook", function()
+        local webhookURL = Options.WebhookURL.Value
+        local dataTypesRaw = Options.WebhookDataTypes.Value
+        local dataTypes = getSelectedDataTypes(dataTypesRaw)
+        
+        if not webhookURL or webhookURL == "" then
+            Library:Notify("Please enter a webhook URL", 3)
+            return
+        end
+        
+        if not dataTypes or #dataTypes == 0 then
+            Library:Notify("Please select at least one data type", 3)
+            return
+        end
+        
+        local success = sendToWebhook(webhookURL, dataTypesRaw)
+        if success then
+            Library:Notify("Webhook test sent successfully", 3)
+        else
+            Library:Notify("Failed to send webhook test", 3)
+        end
+    end)
+    
+    Options.WebhookInterval:OnChanged(function()
+        if webhookRunning and webhookTask then
+            task.cancel(webhookTask)
+            webhookTask = nil
+            
+            local webhookURL = Options.WebhookURL.Value
+            local dataTypesRaw = Options.WebhookDataTypes.Value
+            local intervalMinutes = Options.WebhookInterval.Value
+            local intervalSeconds = intervalMinutes * 60
+            
+            webhookTask = task.spawn(function()
+                while webhookRunning do
+                    local currentDataTypesRaw = Options.WebhookDataTypes.Value
+                    local success = sendToWebhook(webhookURL, currentDataTypesRaw)
+                    if not success then
+                        Library:Notify("Failed to send webhook", 3)
+                    end
+                    
+                    task.wait(intervalSeconds)
+                end
+            end)
+        end
+    end)
+end
 
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
 
@@ -114,6 +555,49 @@ SaveManager:LoadAutoloadConfig()
 
 local CleanupFunctions = {}
 
+-- Global tool cooldown management
+local currentEquippedTool = "Garden Scissors"
+local currentToolCooldown = 0.44
+
+local function getToolCooldownFromConfig(toolName)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local gameContent = ReplicatedStorage:FindFirstChild("GameContent")
+    if not gameContent then return 0.44 end
+    local toolsFolder = gameContent:FindFirstChild("Tools")
+    if not toolsFolder then return 0.44 end
+    local toolFolder = toolsFolder:FindFirstChild(toolName)
+    if not toolFolder then return 0.44 end
+    local configScript = toolFolder:FindFirstChild("Config")
+    if not configScript then return 0.44 end
+    
+    if configScript:IsA("ModuleScript") then
+        local ok, cfg = pcall(function() return require(configScript) end)
+        if ok and cfg then
+            local cooldown = cfg["Cooldown"] or cfg["cooldown"] or cfg["COOLDOWN"]
+            if cooldown then
+                local numCooldown = tonumber(cooldown)
+                if numCooldown and numCooldown > 0 then
+                    return numCooldown
+                end
+            end
+        end
+    end
+    return 0.44
+end
+
+local function updateToolCooldown(toolName)
+    if toolName and toolName ~= "" and toolName ~= "None" then
+        currentEquippedTool = toolName
+        currentToolCooldown = getToolCooldownFromConfig(toolName)
+    end
+end
+
+-- Initialize cooldown on script start
+task.spawn(function()
+    task.wait(0.5)
+    updateToolCooldown("Garden Scissors")
+end)
+
 do
     local Players = game:GetService("Players")
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -145,11 +629,30 @@ do
     local farmingZoneName = nil
     local farmCoroutine = nil
     local farmStop = false
+    local harvestFarmRunning = false
+    local harvestFarmTask = nil
+
+    local function hasZoneRespawnTimer(zoneName)
+        local zone = getZoneByName(zoneName)
+        if not zone then return false end
+        local resources = zone:FindFirstChild("Resources")
+        if not resources then return false end
+        local hasResourceModels = false
+        for _, obj in ipairs(resources:GetChildren()) do
+            if obj.Name == "ResourceModel" then
+                hasResourceModels = true
+                break
+            end
+        end
+        return not hasResourceModels
+    end
 
     local function stopFarming()
-        if farmingZoneName ~= nil then
+        farmStop = true
+        if harvestFarmTask then
+            task.cancel(harvestFarmTask)
+            harvestFarmTask = nil
         end
-        farmingZoneName = nil
         if farmCoroutine then
             farmStop = true
             local tries = 0
@@ -159,6 +662,7 @@ do
             end
             farmCoroutine = nil
         end
+        farmingZoneName = nil
         farmStop = false
     end
 
@@ -178,7 +682,7 @@ do
         char:PivotTo(cf + Vector3.new(0, 5, 0))
     end
 
-    local function startFarming(zoneName)
+    local function startFarmingSingle(zoneName)
         if farmingZoneName == zoneName then return end
         stopFarming()
         if not zoneName then return end
@@ -193,9 +697,18 @@ do
         end
 
         farmingZoneName = zoneName
+        teleportToZone(zoneName)
         farmStop = false
         farmCoroutine = coroutine.create(function()
+            local teleportCount = 0
             while not farmStop do
+                teleportCount = teleportCount + 1
+                
+                if teleportCount >= 10 then
+                    teleportToZone(zoneName)
+                    teleportCount = 0
+                end
+                
                 if isSemiSupport then
                     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, false)
                     task.wait(0.01)
@@ -211,7 +724,7 @@ do
                     for _, resourceModel in ipairs(models) do
                         if farmStop then break end
                         hitRemote:FireServer(resourceModel)
-                        task.wait(0.44)
+                        task.wait(currentToolCooldown)
                         if farmStop then break end
                     end
                 end
@@ -221,10 +734,177 @@ do
         coroutine.resume(farmCoroutine)
     end
 
+    local harvestTask = nil
+    local harvestStop = false
+
+    local function stopHarvestTask()
+        harvestStop = true
+        if harvestTask then
+            task.cancel(harvestTask)
+            harvestTask = nil
+        end
+        harvestStop = false
+    end
+
+    local function startHarvestZone(zoneName)
+        harvestStop = true
+        if harvestTask then
+            task.cancel(harvestTask)
+            harvestTask = nil
+        end
+        
+        local fieldsFolder = Workspace:FindFirstChild("Fields")
+        if not fieldsFolder then return false end
+        local zone = fieldsFolder:FindFirstChild(zoneName)
+        if not zone then return false end
+        
+        local char = player.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return false end
+        
+        local cf
+        if zone:IsA("Model") then
+            cf = zone:GetPivot()
+        elseif zone:IsA("BasePart") then
+            cf = zone.CFrame
+        else
+            return false
+        end
+        char:PivotTo(cf + Vector3.new(0, 5, 0))
+        
+        harvestStop = false
+        harvestTask = task.spawn(function()
+            local resources = zone:FindFirstChild("Resources")
+            if not resources then return end
+            
+            while not harvestStop and harvestFarmRunning do
+                if harvestStop or not harvestFarmRunning then break end
+                if isSemiSupport then
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, false)
+                    task.wait(0.01)
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, false)
+                else
+                    useRemote:FireServer()
+                    local models = {}
+                    for _, obj in ipairs(resources:GetChildren()) do
+                        if obj.Name == "ResourceModel" then
+                            table.insert(models, obj)
+                        end
+                    end
+                    for _, resourceModel in ipairs(models) do
+                        if harvestStop or not harvestFarmRunning then break end
+                        hitRemote:FireServer(resourceModel)
+                        task.wait(currentToolCooldown)
+                    end
+                end
+                if harvestStop or not harvestFarmRunning then break end
+                task.wait(isSemiSupport and 0.2 or 0.1)
+            end
+        end)
+        
+        return true
+    end
+
+    local function startHarvestFarmingMulti()
+        if harvestFarmRunning then
+            Library:Notify("Harvest farming already running", 3)
+            return
+        end
+
+        harvestFarmRunning = true
+
+        task.spawn(function()
+            while harvestFarmRunning do
+                local selectedZonesRaw = Options.HarvestZone and Options.HarvestZone.Value or nil
+                local selectedZones = {}
+                
+                if not selectedZonesRaw then
+                    Library:Notify("No zones selected", 3)
+                    harvestFarmRunning = false
+                    return
+                end
+                
+                if type(selectedZonesRaw) == "string" then
+                    selectedZones = {selectedZonesRaw}
+                elseif type(selectedZonesRaw) == "table" then
+                    for key, value in pairs(selectedZonesRaw) do
+                        if type(value) == "string" and value ~= "" then
+                            table.insert(selectedZones, value)
+                        elseif type(key) == "number" and type(value) == "string" and value ~= "" then
+                            table.insert(selectedZones, value)
+                        elseif type(key) == "number" and type(value) == "number" then
+                            local allZones = getZoneNames()
+                            local zoneName = allZones[value]
+                            if zoneName then
+                                table.insert(selectedZones, zoneName)
+                            end
+                        elseif type(key) == "string" and (value == true or value == nil) then
+                            table.insert(selectedZones, key)
+                        end
+                    end
+                end
+                
+                if not selectedZones or #selectedZones == 0 then
+                    Library:Notify("No zones selected", 3)
+                    harvestFarmRunning = false
+                    return
+                end
+
+                local foundZone = false
+
+                for _, zoneName in ipairs(selectedZones) do
+                    if not harvestFarmRunning then break end
+                    
+                    if not hasZoneRespawnTimer(zoneName) then
+                        foundZone = true
+                        stopHarvestTask()
+                        
+                        Library:Notify("Starting harvest: " .. zoneName, 3)
+                        startHarvestZone(zoneName)
+                        break
+                    end
+                end
+
+                if not foundZone then
+                    task.wait(2)
+                else
+                    task.wait(2)
+                end
+            end
+        end)
+    end
+
+    local function stopHarvestFarmingMulti()
+        harvestFarmRunning = false
+        stopHarvestTask()
+    end
+
     player.CharacterAdded:Connect(function()
-        if farmingZoneName then
+        if farmingZoneName and harvestFarmRunning then
             teleportToZone(farmingZoneName)
-            startFarming(farmingZoneName)
+            if Options.HarvestZone then
+                local selectedZonesRaw = Options.HarvestZone.Value or nil
+                local selectedZones = {}
+                
+                if selectedZonesRaw then
+                    if type(selectedZonesRaw) == "string" then
+                        selectedZones = {selectedZonesRaw}
+                    elseif type(selectedZonesRaw) == "table" then
+                        for key, value in pairs(selectedZonesRaw) do
+                            if type(value) == "string" and value ~= "" then
+                                table.insert(selectedZones, value)
+                            elseif type(key) == "number" and type(value) == "string" and value ~= "" then
+                                table.insert(selectedZones, value)
+                            elseif type(key) == "string" and (value == true or value == nil) then
+                                table.insert(selectedZones, key)
+                            end
+                        end
+                    end
+                end
+                
+                if #selectedZones > 0 then
+                    startHarvestFarmingMulti()
+                end
+            end
         end
     end)
 
@@ -233,15 +913,11 @@ do
     local zones = getZoneNames()
     MainGroup:AddDropdown("HarvestZone", {
         Values = zones,
-        Default = zones[1],
-        Multi = false,
-        Text = "Farm Zone",
+        Default = {},
+        Multi = true,
+        Text = "Farm Zones",
         Searchable = true,
         Callback = function(value)
-            if Toggles.AutoHarvestToggle and Toggles.AutoHarvestToggle.Value then
-                teleportToZone(value)
-                startFarming(value)
-            end
         end,
     })
 
@@ -249,17 +925,51 @@ do
         Text = "Auto Harvest",
         Default = false,
         Callback = function(enabled)
-            local selected = Options.HarvestZone and Options.HarvestZone.Value or nil
             if enabled then
-                if not selected or selected == "" then
-                    Library:Notify("Select a zone in the dropdown list", 3)
+                local selectedZonesRaw = Options.HarvestZone and Options.HarvestZone.Value
+                local selectedZones = {}
+                
+                if selectedZonesRaw then
+                    if type(selectedZonesRaw) == "string" then
+                        if selectedZonesRaw ~= "" then
+                            selectedZones = {selectedZonesRaw}
+                        end
+                    elseif type(selectedZonesRaw) == "table" then
+                        local count = 0
+                        for key, value in pairs(selectedZonesRaw) do
+                            if type(value) == "string" and value ~= "" then
+                                table.insert(selectedZones, value)
+                                count = count + 1
+                            elseif type(key) == "number" and type(value) == "string" and value ~= "" then
+                                table.insert(selectedZones, value)
+                                count = count + 1
+                            elseif type(key) == "number" and type(value) == "number" then
+                                local allZones = getZoneNames()
+                                local zoneName = allZones[value]
+                                if zoneName then
+                                    table.insert(selectedZones, zoneName)
+                                    count = count + 1
+                                end
+                            elseif type(key) == "string" and (value == true or value == nil) then
+                                table.insert(selectedZones, key)
+                                count = count + 1
+                            end
+                        end
+                        if count == 0 and next(selectedZonesRaw) == nil then
+                            selectedZones = {}
+                        end
+                    end
+                end
+                
+                if #selectedZones == 0 then
+                    Library:Notify("Select at least one zone in the dropdown list", 3)
                     Toggles.AutoHarvestToggle:SetValue(false)
                     return
                 end
-                teleportToZone(selected)
-                startFarming(selected)
+                
+                startHarvestFarmingMulti()
             else
-                stopFarming()
+                stopHarvestFarmingMulti()
             end
         end,
     })
@@ -273,7 +983,7 @@ do
     end)
     
     table.insert(CleanupFunctions, function()
-        stopFarming()
+        stopHarvestFarmingMulti()
         if Toggles.AutoHarvestToggle then
             Toggles.AutoHarvestToggle:SetValue(false)
         end
@@ -322,22 +1032,28 @@ do
     local farmingBugName = nil
     local bugFarmCoroutine = nil
     local bugFarmStop = false
+    local bugFarmRunning = false
+    local bugFarmTask = nil
+
+    local function hasBugRespawnTimer(bugName)
+        local bugSpawns = Workspace:FindFirstChild("BugSpawns")
+        if not bugSpawns then return false end
+        local bug = bugSpawns:FindFirstChild(bugName)
+        if not bug then return false end
+        return bug:FindFirstChild("BugRespawnTimer") ~= nil
+    end
 
     local function stopBugFarming()
-        farmingBugName = nil
-        if bugFarmCoroutine then
-            bugFarmStop = true
-            local tries = 0
-            while bugFarmCoroutine and coroutine.status(bugFarmCoroutine) ~= "dead" and tries < 100 do
-                task.wait(0.05)
-                tries = tries + 1
-            end
-            bugFarmCoroutine = nil
+        bugFarmStop = true
+        if bugFarmTask then
+            task.cancel(bugFarmTask)
+            bugFarmTask = nil
         end
+        farmingBugName = nil
         bugFarmStop = false
     end
 
-    local function startBugFarming(bugName)
+    local function startBugFarmingSingle(bugName)
         if farmingBugName == bugName then return end
         stopBugFarming()
         if not bugName then return end
@@ -359,17 +1075,151 @@ do
                     useRemote:FireServer()
                     hitRemote:FireServer(bug)
                 end
-                task.wait(isSemiSupport and 0.2 or 0.44)
+                task.wait(isSemiSupport and 0.2 or currentToolCooldown)
                 if bugFarmStop then break end
             end
         end)
         coroutine.resume(bugFarmCoroutine)
     end
 
+    local function startBugFarming(bugName)
+        bugFarmStop = true
+        if bugFarmTask then
+            task.cancel(bugFarmTask)
+            bugFarmTask = nil
+        end
+        
+        local bugSpawns = Workspace:FindFirstChild("BugSpawns")
+        if not bugSpawns then return false end
+        local bug = bugSpawns:FindFirstChild(bugName)
+        if not bug then return false end
+        
+        local character = LocalPlayer.Character
+        if not character then return false end
+        
+        local cf = bug:GetPivot()
+        character:PivotTo(cf + Vector3.new(0, 5, 0))
+        
+        bugFarmStop = false
+        bugFarmTask = task.spawn(function()
+            while not bugFarmStop and bugFarmRunning do
+                if bugFarmStop or not bugFarmRunning then break end
+                if isSemiSupport then
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, false)
+                    task.wait(0.01)
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, false)
+                else
+                    useRemote:FireServer()
+                    hitRemote:FireServer(bug)
+                end
+                task.wait(isSemiSupport and 0.2 or currentToolCooldown)
+            end
+        end)
+        
+        return true
+    end
+
+    local function startBugFarmingMulti()
+        if bugFarmRunning then
+            Library:Notify("Bug farming already running", 3)
+            return
+        end
+
+        bugFarmRunning = true
+
+        task.spawn(function()
+            while bugFarmRunning do
+                local selectedBugsRaw = Options.BugName and Options.BugName.Value or nil
+                local selectedBugs = {}
+                
+                if not selectedBugsRaw then
+                    Library:Notify("No bugs selected", 3)
+                    bugFarmRunning = false
+                    return
+                end
+                
+                if type(selectedBugsRaw) == "string" then
+                    selectedBugs = {selectedBugsRaw}
+                elseif type(selectedBugsRaw) == "table" then
+                    for key, value in pairs(selectedBugsRaw) do
+                        if type(value) == "string" and value ~= "" then
+                            table.insert(selectedBugs, value)
+                        elseif type(key) == "number" and type(value) == "string" and value ~= "" then
+                            table.insert(selectedBugs, value)
+                        elseif type(key) == "number" and type(value) == "number" then
+                            local allBugs = getBugNames()
+                            local bugName = allBugs[value]
+                            if bugName then
+                                table.insert(selectedBugs, bugName)
+                            end
+                        elseif type(key) == "string" and (value == true or value == nil) then
+                            table.insert(selectedBugs, key)
+                        end
+                    end
+                end
+                
+                if not selectedBugs or #selectedBugs == 0 then
+                    Library:Notify("No bugs selected", 3)
+                    bugFarmRunning = false
+                    return
+                end
+
+                local foundBug = false
+
+                for _, bugName in ipairs(selectedBugs) do
+                    if not bugFarmRunning then break end
+                    
+                    if not hasBugRespawnTimer(bugName) then
+                        foundBug = true
+                        stopBugFarming()
+                        
+                        Library:Notify("Starting bug farming: " .. bugName, 3)
+                        startBugFarming(bugName)
+                        break
+                    end
+                end
+
+                if not foundBug then
+                    task.wait(2)
+                else
+                    task.wait(2)
+                end
+            end
+        end)
+    end
+
+    local function stopBugFarmingMulti()
+        bugFarmRunning = false
+        stopBugFarming()
+    end
+
     LocalPlayer.CharacterAdded:Connect(function()
-        if farmingBugName then
+        if farmingBugName and bugFarmRunning then
             teleportToBug(farmingBugName)
-            startBugFarming(farmingBugName)
+            if Options.BugName then
+                local selectedBugsRaw = Options.BugName.Value or nil
+                local selectedBugs = {}
+                
+                if selectedBugsRaw then
+                    if type(selectedBugsRaw) == "string" then
+                        selectedBugs = {selectedBugsRaw}
+                    elseif type(selectedBugsRaw) == "table" then
+                        for key, value in pairs(selectedBugsRaw) do
+                            if type(value) == "string" then
+                                table.insert(selectedBugs, value)
+                            elseif type(key) == "number" then
+                                table.insert(selectedBugs, value)
+                            elseif type(key) == "string" and value == true then
+                                table.insert(selectedBugs, key)
+                            end
+                        end
+                    end
+                end
+                
+                if #selectedBugs > 0 then
+                    startBugFarmingMulti()
+                end
+            end
         end
     end)
 
@@ -378,15 +1228,11 @@ do
     local bugs = getBugNames()
     BugGroup:AddDropdown("BugName", {
         Values = bugs,
-        Default = bugs[1] or nil,
-        Multi = false,
-        Text = "Bug",
+        Default = {},
+        Multi = true,
+        Text = "Bugs",
         Searchable = true,
         Callback = function(value)
-            if Toggles.AutoFarmBugsToggle and Toggles.AutoFarmBugsToggle.Value then
-                teleportToBug(value)
-                startBugFarming(value)
-            end
         end,
     })
 
@@ -394,17 +1240,50 @@ do
         Text = "Auto Farm Bugs",
         Default = false,
         Callback = function(enabled)
-            local selected = Options.BugName and Options.BugName.Value or nil
             if enabled then
-                if not selected or selected == "" then
-                    Library:Notify("Select a bug in the dropdown list", 3)
+                local selectedBugsRaw = Options.BugName and Options.BugName.Value
+                local selectedBugs = {}
+                
+                if selectedBugsRaw then
+                    if type(selectedBugsRaw) == "string" then
+                        if selectedBugsRaw ~= "" then
+                            selectedBugs = {selectedBugsRaw}
+                        end
+                    elseif type(selectedBugsRaw) == "table" then
+                        local count = 0
+                        for key, value in pairs(selectedBugsRaw) do
+                            if type(value) == "string" and value ~= "" then
+                                table.insert(selectedBugs, value)
+                                count = count + 1
+                            elseif type(key) == "number" and type(value) == "string" and value ~= "" then
+                                table.insert(selectedBugs, value)
+                                count = count + 1
+                            elseif type(key) == "number" and type(value) == "number" then
+                                local bugName = bugs[value]
+                                if bugName then
+                                    table.insert(selectedBugs, bugName)
+                                    count = count + 1
+                                end
+                            elseif type(key) == "string" and (value == true or value == nil) then
+                                table.insert(selectedBugs, key)
+                                count = count + 1
+                            end
+                        end
+                        if count == 0 and next(selectedBugsRaw) == nil then
+                            selectedBugs = {}
+                        end
+                    end
+                end
+                
+                if #selectedBugs == 0 then
+                    Library:Notify("Select at least one bug in the dropdown list", 3)
                     Toggles.AutoFarmBugsToggle:SetValue(false)
                     return
                 end
-                teleportToBug(selected)
-                startBugFarming(selected)
+                
+                startBugFarmingMulti()
             else
-                stopBugFarming()
+                stopBugFarmingMulti()
             end
         end,
     })
@@ -523,7 +1402,7 @@ do
     })
     
     table.insert(CleanupFunctions, function()
-        stopBugFarming()
+        stopBugFarmingMulti()
         if Toggles.AutoFarmBugsToggle then
             Toggles.AutoFarmBugsToggle:SetValue(false)
         end
@@ -891,7 +1770,7 @@ do
         return names
     end
 
-    local function getItemPriceFromFolder(folder, itemName)
+    local function getToolConfig(folder, itemName)
         local itemFolder = folder:FindFirstChild(itemName)
         if not itemFolder then return nil end
         local configScript = itemFolder:FindFirstChild("Config")
@@ -900,36 +1779,34 @@ do
         if configScript:IsA("ModuleScript") then
             local ok, cfg = pcall(function() return require(configScript) end)
             if ok and cfg then
-                local price = cfg["Price"] or cfg["price"] or cfg["PRICE"]
-                if price then
-                    local numPrice = tonumber(price)
-                    if numPrice then
-                        return numPrice
-                    end
+                return cfg
+            end
+        end
+        return nil
+    end
+
+    local function getItemPriceFromFolder(folder, itemName)
+        local cfg = getToolConfig(folder, itemName)
+        if cfg then
+            local price = cfg["Price"] or cfg["price"] or cfg["PRICE"]
+            if price then
+                local numPrice = tonumber(price)
+                if numPrice and numPrice > 0 then
+                    return numPrice
                 end
             end
-        elseif configScript:IsA("Script") then
-            local src = configScript.Source
-            if not src or src == "" then return nil end
-            
-            local patterns = {
-                '%["Price"%]%s*=%s*(%d+)',
-                '%["price"%]%s*=%s*(%d+)',
-                '%["PRICE"%]%s*=%s*(%d+)',
-                'Price%s*=%s*(%d+)',
-                'price%s*=%s*(%d+)',
-                'PRICE%s*=%s*(%d+)',
-                '%["Price"%]%s*:%s*(%d+)',
-                '%["price"%]%s*:%s*(%d+)',
-            }
-            
-            for _, pattern in ipairs(patterns) do
-                local price = string.match(src, pattern)
-                if price then
-                    local numPrice = tonumber(price)
-                    if numPrice then
-                        return numPrice
-                    end
+        end
+        return nil
+    end
+
+    local function getToolCooldown(folder, itemName)
+        local cfg = getToolConfig(folder, itemName)
+        if cfg then
+            local cooldown = cfg["Cooldown"] or cfg["cooldown"] or cfg["COOLDOWN"]
+            if cooldown then
+                local numCooldown = tonumber(cooldown)
+                if numCooldown and numCooldown > 0 then
+                    return numCooldown
                 end
             end
         end
@@ -954,7 +1831,7 @@ do
         FormatDisplayValue = function(value)
             if value == "None" or value == nil or value == "" then return "None" end
             local price = getItemPriceFromFolder(toolsFolder, value)
-            if price and price > 0 then
+            if price and type(price) == "number" and price > 0 then
                 return string.format("%s | Price: %d", value, price)
             end
             return value
@@ -970,7 +1847,7 @@ do
         FormatDisplayValue = function(value)
             if value == "None" or value == nil or value == "" then return "None" end
             local price = getItemPriceFromFolder(backpacksFolder, value)
-            if price and price > 0 then
+            if price and type(price) == "number" and price > 0 then
                 return string.format("%s | Price: %d", value, price)
             end
             return value
@@ -986,7 +1863,7 @@ do
         FormatDisplayValue = function(value)
             if value == "None" or value == nil or value == "" then return "None" end
             local price = getItemPriceFromFolder(mountsFolder, value)
-            if price and price > 0 then
+            if price and type(price) == "number" and price > 0 then
                 return string.format("%s | Price: %d", value, price)
             end
             return value
@@ -1878,7 +2755,7 @@ do
                     for _, resourceModel in ipairs(models) do
                         if questHarvestStop or not questFarmRunning then break end
                         hitRemote:FireServer(resourceModel)
-                        task.wait(0.44)
+                        task.wait(currentToolCooldown)
                     end
                 end
                 if questHarvestStop or not questFarmRunning then break end
@@ -1919,7 +2796,7 @@ do
                     useRemote:FireServer()
                     hitRemote:FireServer(bug)
                 end
-                task.wait(isSemiSupport and 0.2 or 0.44)
+                task.wait(isSemiSupport and 0.2 or currentToolCooldown)
             end
         end)
         
@@ -1963,6 +2840,14 @@ do
     local function parseTask(taskText)
         local originalText = taskText
         local lowerText = string.lower(taskText)
+        
+        local harvestFoodMatch = string.match(lowerText, "harvest%s+food")
+        if harvestFoodMatch then
+            return {
+                type = "harvest",
+                zone = "Blueberry"
+            }
+        end
         
         local harvestMatch = string.match(lowerText, "harvest from (.+) field")
         if harvestMatch then
@@ -2261,6 +3146,92 @@ do
             Toggles.AutoFarmQuestsToggle:SetValue(false)
         end
     end)
+    
+    do
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        
+        local equipRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UI"):WaitForChild("EquipItem")
+        local gameContent = ReplicatedStorage:WaitForChild("GameContent")
+        local toolsFolder = gameContent:WaitForChild("Tools")
+        
+        local function getItemNames(folder)
+            local names = {}
+            for _, itemFolder in ipairs(folder:GetChildren()) do
+                if itemFolder:IsA("Folder") then
+                    table.insert(names, itemFolder.Name)
+                end
+            end
+            table.sort(names)
+            return names
+        end
+        
+        local EquipGroup = Tabs.Main:AddLeftGroupbox("Auto Equip Tools", "tool")
+        
+        local toolNames = getItemNames(toolsFolder)
+        table.insert(toolNames, 1, "None")
+        
+        EquipGroup:AddDropdown("EquipTool", {
+            Values = toolNames,
+            Default = toolNames[1],
+            Multi = false,
+            Text = "Tools",
+            Searchable = true,
+        })
+        
+        EquipGroup:AddButton("Equip", function()
+            local tool = Options.EquipTool and Options.EquipTool.Value or nil
+            
+            if not tool or tool == "" or tool == "None" then
+                Library:Notify("Select a tool in the dropdown list", 3)
+                return
+            end
+            
+            local args = {
+                "Tools",
+                tool
+            }
+            
+            pcall(function()
+                equipRemote:FireServer(unpack(args))
+                updateToolCooldown(tool)
+                Library:Notify("Equipped: " .. tool, 3)
+            end)
+        end)
+        
+        task.spawn(function()
+            task.wait(1)
+            local defaultTool = "Garden Scissors"
+            local toolExists = false
+            for _, toolName in ipairs(toolNames) do
+                if toolName == defaultTool then
+                    toolExists = true
+                    break
+                end
+            end
+            
+            if toolExists then
+                local args = {
+                    "Tools",
+                    defaultTool
+                }
+                pcall(function()
+                    equipRemote:FireServer(unpack(args))
+                    updateToolCooldown(defaultTool)
+                end)
+            else
+                updateToolCooldown(defaultTool)
+            end
+        end)
+        
+        EquipGroup:AddButton("Update Tool List", function()
+            local newTools = getItemNames(toolsFolder)
+            table.insert(newTools, 1, "None")
+            Options.EquipTool:SetValues(newTools)
+            if #newTools > 0 and not Options.EquipTool.Value then
+                Options.EquipTool:SetValue(newTools[1])
+            end
+        end)
+    end
     
     local claimOrbsRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("ClaimOrbs")
     local autoCollectOrbsEnabled = false
