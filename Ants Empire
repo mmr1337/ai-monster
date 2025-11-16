@@ -44,7 +44,7 @@ local executorName = identifyexecutor or "AI monster"
 
 local Window = Library:CreateWindow({
     Title = executorName,
-    Footer = "IF U HAVE BUGS USE VOLCANO EXEC!!!",
+    Footer = "by dem3x3",
     Icon = 95952879196724,
     NotifySide = "Right",
     ShowCustomCursor = true,
@@ -494,6 +494,213 @@ do
             end)
         end
     end)
+    
+    local OtherGroup = Tabs.Webhook:AddRightGroupbox("Other", "settings")
+    
+    OtherGroup:AddButton("Low Graphics Mode", function()
+        local Players = game:GetService("Players")
+        local StarterGui = game:GetService("StarterGui")
+        local LocalPlayer = Players.LocalPlayer
+        local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+        
+        local function removeSplashScreen()
+            local splashScreen = PlayerGui:FindFirstChild("SplashScreen2025")
+            if splashScreen then
+                local character = LocalPlayer.Character
+                if character then
+                    local humanoid = character:FindFirstChild("Humanoid")
+                    if humanoid then
+                        humanoid.WalkSpeed = 16
+                        humanoid.JumpPower = 50
+                    end
+                end
+                
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+                splashScreen:Destroy()
+            end
+        end
+        
+        PlayerGui.ChildAdded:Connect(function(child)
+            if child.Name == "SplashScreen2025" then
+                task.wait(0.1)
+                removeSplashScreen()
+            end
+        end)
+        
+        removeSplashScreen()
+        
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/mmr1337/ai-monster/refs/heads/main/ui"))()
+        
+        task.wait(1)
+        
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local updateSettingRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Data"):WaitForChild("Settings"):WaitForChild("UpdateSetting")
+        
+        task.spawn(function()
+            local settings = {
+                {"Hide Other Ants", true},
+                {"Clouds", false},
+                {"Reduce Effects", true}
+            }
+            
+            for _, setting in ipairs(settings) do
+                local args = {setting[1], setting[2]}
+                pcall(function()
+                    updateSettingRemote:FireServer(unpack(args))
+                end)
+                task.wait(1)
+            end
+        end)
+        
+        Library:Notify("Low Graphics Mode enabled", 3)
+    end)
+    
+    OtherGroup:AddButton("Redeem all code", function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local redeemRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UI"):WaitForChild("RedeemCode")
+        
+        local codes = {"sugar", "colony", "pheromones", "BONUS", "ilikefood", "989", "flame", "bedbugs", "herefishyfish", "supersecret"}
+        
+        task.spawn(function()
+            for _, code in ipairs(codes) do
+                local args = {code}
+                pcall(function()
+                    redeemRemote:FireServer(unpack(args))
+                end)
+                task.wait(0.5)
+            end
+            Library:Notify("All codes redeemed", 3)
+        end)
+    end)
+    
+    local function teleportToPosition(position)
+        local character = LocalPlayer.Character
+        if not character then return false end
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return false end
+        
+        local success, err = pcall(function()
+            character:PivotTo(CFrame.new(position))
+        end)
+        return success
+    end
+    
+    local function findLocalNest()
+        local Workspace = game:GetService("Workspace")
+        local map = Workspace:FindFirstChild("Map")
+        if not map then return nil end
+        local nestsFolder = map:FindFirstChild("Nests")
+        if not nestsFolder then return nil end
+        for _, nest in ipairs(nestsFolder:GetChildren()) do
+            local sign = nest:FindFirstChild("NestOwnerSign")
+            if sign then
+                local surfaceGui = sign:FindFirstChild("SurfaceGui")
+                if surfaceGui then
+                    local playerUsername = surfaceGui:FindFirstChild("PlayerUsername")
+                    if playerUsername and playerUsername:IsA("TextLabel") then
+                        local expectedText = LocalPlayer.Name .. "'s Nest"
+                        if playerUsername.Text == expectedText then
+                            return nest
+                        end
+                    end
+                end
+            end
+        end
+        return nil
+    end
+    
+    OtherGroup:AddButton("shop1", function()
+        local position = Vector3.new(236.9853515625, 15.375, 26.22736358642578)
+        local success = teleportToPosition(position)
+        if success then
+            Library:Notify("Teleported to shop1", 3)
+        else
+            Library:Notify("Failed to teleport to shop1", 3)
+        end
+    end)
+    
+    OtherGroup:AddButton("shop2", function()
+        local position = Vector3.new(343.4637756347656, 15.531492233276367, -110.56260681152344)
+        local success = teleportToPosition(position)
+        if success then
+            Library:Notify("Teleported to shop2", 3)
+        else
+            Library:Notify("Failed to teleport to shop2", 3)
+        end
+    end)
+    
+    OtherGroup:AddButton("shop3", function()
+        local position = Vector3.new(157.73341369628906, 30.18750762939453, -243.57337951660156)
+        local success = teleportToPosition(position)
+        if success then
+            Library:Notify("Teleported to shop3", 3)
+        else
+            Library:Notify("Failed to teleport to shop3", 3)
+        end
+    end)
+    
+    OtherGroup:AddButton("MountsShop", function()
+        local position = Vector3.new(427.25115966796875, 40, -365.7469787597656)
+        local success = teleportToPosition(position)
+        if success then
+            Library:Notify("Teleported to MountsShop", 3)
+        else
+            Library:Notify("Failed to teleport to MountsShop", 3)
+        end
+    end)
+    
+    OtherGroup:AddButton("Nest", function()
+        local nest = findLocalNest()
+        if not nest then
+            Library:Notify("Nest not found", 3)
+            return
+        end
+        
+        local nestModel = nest:FindFirstChild("Nest")
+        if not nestModel then
+            Library:Notify("Nest.Nest not found", 3)
+            return
+        end
+        
+        local antModel = nestModel:FindFirstChild("AntModel")
+        if not antModel then
+            Library:Notify("AntModel not found", 3)
+            return
+        end
+        
+        local character = LocalPlayer.Character
+        if not character then
+            Library:Notify("Character not found", 3)
+            return
+        end
+        
+        local success, err = pcall(function()
+            local targetPosition = nil
+            if antModel:IsA("BasePart") then
+                targetPosition = antModel.CFrame
+            elseif antModel:IsA("Model") then
+                if antModel.PrimaryPart then
+                    targetPosition = antModel:GetPivot()
+                else
+                    local part = antModel:FindFirstChildOfClass("BasePart")
+                    if part then
+                        targetPosition = part.CFrame
+                    end
+                end
+            end
+            
+            if targetPosition then
+                character:PivotTo(targetPosition)
+                Library:Notify("Teleported to Nest", 3)
+            else
+                Library:Notify("Failed to find AntModel position", 3)
+            end
+        end)
+        
+        if not success then
+            Library:Notify("Failed to teleport to Nest", 3)
+        end
+    end)
 end
 
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
@@ -545,13 +752,11 @@ SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
 
 SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-ThemeManager:SetFolder("MyScriptHub")
-SaveManager:SetFolder("MyScriptHub/specific-game")
+ThemeManager:SetFolder("nexus")
+SaveManager:SetFolder("nexus/specific-game")
 SaveManager:SetSubFolder("specific-place")
 SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
-
-SaveManager:LoadAutoloadConfig()
 
 local CleanupFunctions = {}
 
@@ -754,12 +959,22 @@ do
         end
         
         local fieldsFolder = Workspace:FindFirstChild("Fields")
-        if not fieldsFolder then return false end
+        if not fieldsFolder then 
+            warn("Fields folder not found")
+            return false 
+        end
+        
         local zone = fieldsFolder:FindFirstChild(zoneName)
-        if not zone then return false end
+        if not zone then 
+            warn("Zone not found: " .. tostring(zoneName))
+            return false 
+        end
         
         local char = player.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return false end
+        if not char or not char:FindFirstChild("HumanoidRootPart") then 
+            warn("Character or HumanoidRootPart not found")
+            return false 
+        end
         
         local cf
         if zone:IsA("Model") then
@@ -767,37 +982,57 @@ do
         elseif zone:IsA("BasePart") then
             cf = zone.CFrame
         else
+            warn("Zone is not a Model or BasePart: " .. zone.ClassName)
             return false
         end
+        
         char:PivotTo(cf + Vector3.new(0, 5, 0))
         
         harvestStop = false
         harvestTask = task.spawn(function()
-            local resources = zone:FindFirstChild("Resources")
-            if not resources then return end
-            
-            while not harvestStop and harvestFarmRunning do
-                if harvestStop or not harvestFarmRunning then break end
-                if isSemiSupport then
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, false)
-                    task.wait(0.01)
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, false)
-                else
-                    useRemote:FireServer()
-                    local models = {}
-                    for _, obj in ipairs(resources:GetChildren()) do
-                        if obj.Name == "ResourceModel" then
-                            table.insert(models, obj)
+            if zoneName == "Orange" then
+                local resourceModel = Workspace:WaitForChild("Fields"):WaitForChild("Orange"):WaitForChild("Resources"):WaitForChild("ResourceModel")
+                
+                while not harvestStop and harvestFarmRunning do
+                    if harvestStop or not harvestFarmRunning then break end
+                    
+                    pcall(function()
+                        local args = {resourceModel}
+                        hitRemote:FireServer(unpack(args))
+                    end)
+                    
+                    task.wait(currentToolCooldown)
+                end
+            else
+                local resources = zone:FindFirstChild("Resources")
+                if not resources then 
+                    warn("Resources folder not found in zone: " .. zoneName)
+                    return 
+                end
+                
+                while not harvestStop and harvestFarmRunning do
+                    if harvestStop or not harvestFarmRunning then break end
+                    if isSemiSupport then
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, false)
+                        task.wait(0.01)
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, false)
+                    else
+                        useRemote:FireServer()
+                        local models = {}
+                        for _, obj in ipairs(resources:GetChildren()) do
+                            if obj.Name == "ResourceModel" then
+                                table.insert(models, obj)
+                            end
+                        end
+                        for _, resourceModel in ipairs(models) do
+                            if harvestStop or not harvestFarmRunning then break end
+                            hitRemote:FireServer(resourceModel)
+                            task.wait(currentToolCooldown)
                         end
                     end
-                    for _, resourceModel in ipairs(models) do
-                        if harvestStop or not harvestFarmRunning then break end
-                        hitRemote:FireServer(resourceModel)
-                        task.wait(currentToolCooldown)
-                    end
+                    if harvestStop or not harvestFarmRunning then break end
+                    task.wait(isSemiSupport and 0.2 or 0.1)
                 end
-                if harvestStop or not harvestFarmRunning then break end
-                task.wait(isSemiSupport and 0.2 or 0.1)
             end
         end)
         
@@ -814,61 +1049,25 @@ do
 
         task.spawn(function()
             while harvestFarmRunning do
-                local selectedZonesRaw = Options.HarvestZone and Options.HarvestZone.Value or nil
-                local selectedZones = {}
+                local selectedZone = Options.HarvestZone and Options.HarvestZone.Value or nil
                 
-                if not selectedZonesRaw then
-                    Library:Notify("No zones selected", 3)
+                if not selectedZone or selectedZone == "" or selectedZone == "None" then
+                    Library:Notify("No zone selected", 3)
                     harvestFarmRunning = false
                     return
                 end
                 
-                if type(selectedZonesRaw) == "string" then
-                    selectedZones = {selectedZonesRaw}
-                elseif type(selectedZonesRaw) == "table" then
-                    for key, value in pairs(selectedZonesRaw) do
-                        if type(value) == "string" and value ~= "" then
-                            table.insert(selectedZones, value)
-                        elseif type(key) == "number" and type(value) == "string" and value ~= "" then
-                            table.insert(selectedZones, value)
-                        elseif type(key) == "number" and type(value) == "number" then
-                            local allZones = getZoneNames()
-                            local zoneName = allZones[value]
-                            if zoneName then
-                                table.insert(selectedZones, zoneName)
-                            end
-                        elseif type(key) == "string" and (value == true or value == nil) then
-                            table.insert(selectedZones, key)
-                        end
+                if not hasZoneRespawnTimer(selectedZone) then
+                    stopHarvestTask()
+                    local success = startHarvestZone(selectedZone)
+                    if success then
+                        Library:Notify("Starting harvest: " .. selectedZone, 3)
+                    else
+                        Library:Notify("Zone not found: " .. selectedZone, 3)
                     end
                 end
                 
-                if not selectedZones or #selectedZones == 0 then
-                    Library:Notify("No zones selected", 3)
-                    harvestFarmRunning = false
-                    return
-                end
-
-                local foundZone = false
-
-                for _, zoneName in ipairs(selectedZones) do
-                    if not harvestFarmRunning then break end
-                    
-                    if not hasZoneRespawnTimer(zoneName) then
-                        foundZone = true
-                        stopHarvestTask()
-                        
-                        Library:Notify("Starting harvest: " .. zoneName, 3)
-                        startHarvestZone(zoneName)
-                        break
-                    end
-                end
-
-                if not foundZone then
-                    task.wait(2)
-                else
-                    task.wait(2)
-                end
+                task.wait(2)
             end
         end)
     end
@@ -913,8 +1112,8 @@ do
     local zones = getZoneNames()
     MainGroup:AddDropdown("HarvestZone", {
         Values = zones,
-        Default = {},
-        Multi = true,
+        Default = zones[1] or nil,
+        Multi = false,
         Text = "Farm Zones",
         Searchable = true,
         Callback = function(value)
@@ -926,43 +1125,10 @@ do
         Default = false,
         Callback = function(enabled)
             if enabled then
-                local selectedZonesRaw = Options.HarvestZone and Options.HarvestZone.Value
-                local selectedZones = {}
+                local selectedZone = Options.HarvestZone and Options.HarvestZone.Value or nil
                 
-                if selectedZonesRaw then
-                    if type(selectedZonesRaw) == "string" then
-                        if selectedZonesRaw ~= "" then
-                            selectedZones = {selectedZonesRaw}
-                        end
-                    elseif type(selectedZonesRaw) == "table" then
-                        local count = 0
-                        for key, value in pairs(selectedZonesRaw) do
-                            if type(value) == "string" and value ~= "" then
-                                table.insert(selectedZones, value)
-                                count = count + 1
-                            elseif type(key) == "number" and type(value) == "string" and value ~= "" then
-                                table.insert(selectedZones, value)
-                                count = count + 1
-                            elseif type(key) == "number" and type(value) == "number" then
-                                local allZones = getZoneNames()
-                                local zoneName = allZones[value]
-                                if zoneName then
-                                    table.insert(selectedZones, zoneName)
-                                    count = count + 1
-                                end
-                            elseif type(key) == "string" and (value == true or value == nil) then
-                                table.insert(selectedZones, key)
-                                count = count + 1
-                            end
-                        end
-                        if count == 0 and next(selectedZonesRaw) == nil then
-                            selectedZones = {}
-                        end
-                    end
-                end
-                
-                if #selectedZones == 0 then
-                    Library:Notify("Select at least one zone in the dropdown list", 3)
+                if not selectedZone or selectedZone == "" or selectedZone == "None" then
+                    Library:Notify("Select a zone in the dropdown list", 3)
                     Toggles.AutoHarvestToggle:SetValue(false)
                     return
                 end
@@ -977,8 +1143,10 @@ do
     MainGroup:AddButton("Update Zone List", function()
         local newZones = getZoneNames()
         Options.HarvestZone:SetValues(newZones)
-        if #newZones > 0 and not Options.HarvestZone.Value then
-            Options.HarvestZone:SetValue(newZones[1])
+        if #newZones > 0 then
+            if not Options.HarvestZone.Value or Options.HarvestZone.Value == "" then
+                Options.HarvestZone:SetValue(newZones[1])
+            end
         end
     end)
     
@@ -3499,6 +3667,18 @@ if isSemiSupport then
     local SemiSupportGroup = Tabs.Main:AddRightGroupbox("Notice", "alert-circle")
     SemiSupportGroup:AddLabel("your injector is semi-support")
 end
+
+task.spawn(function()
+    task.wait(0.1)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local updateSettingRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Data"):WaitForChild("Settings"):WaitForChild("UpdateSetting")
+    local args = {"Hide Other Ants", true}
+    pcall(function()
+        updateSettingRemote:FireServer(unpack(args))
+    end)
+end)
+
+SaveManager:LoadAutoloadConfig()
 
 Library:OnUnload(function()
     for _, cleanupFunc in ipairs(CleanupFunctions) do
