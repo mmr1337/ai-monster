@@ -14,6 +14,9 @@ local identifyexecutor = identifyexecutor and identifyexecutor() or "unknown"
 
 local allowedExecutors = {
     ["Swift"] = true,
+    ["Delta"] = true,
+    ["Crypt"] = true,
+    ["Codex"] = true,
     ["Bunni.lol"] = true,
     ["Potassium"] = true,
     ["Wave"] = true,
