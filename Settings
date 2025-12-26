@@ -1,0 +1,5 @@
+return {
+    ["Keyless"] = true,
+    ["FFA"] = false,
+    ["Until"] = "2030-12-3"
+}
