@@ -1,4 +1,4 @@
--- Anime Vanguards Macro Recorder v1.0
+-- Anime Vanguards Macro Recorder v1.2 (Fixed SlotIndex)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -178,16 +178,8 @@ if MODE == "record" then
         end
     end)
     
-    -- Hooking remote events
-    local Networking = ReplicatedStorage:WaitForChild("Networking")
-    local UnitEvent = Networking:WaitForChild("UnitEvent")
-    local SkipWaveEvent = Networking:WaitForChild("SkipWaveEvent")
-    
-    -- Hook UnitEvent
-    local oldUnitFireServer = UnitEvent.FireServer
-    UnitEvent.FireServer = function(self, action, ...)
-        local args = {...}
-        
+    -- Функция записи событий
+    local function recordEvent(remoteName, args)
         task.spawn(function()
             local wave, timeStr, totalWaves = getCurrentWaveAndTime()
             local timeSeconds = convertTimeToSeconds(timeStr)
@@ -196,136 +188,144 @@ if MODE == "record" then
                 recordedTotalWaves = tonumber(totalWaves)
             end
             
-            if action == "Render" then
-                local unitData = args[1]
-                local unitName = unitData[1]
-                local level = unitData[2]
-                local position = {unitData[3].X, unitData[3].Y, unitData[3].Z}
-                local rotation = unitData[4]
+            if remoteName == "UnitEvent" then
+                local action = args[1]
                 
-                table.insert(recorded, {
-                    Action = "Render",
-                    UnitName = unitName,
-                    Level = level,
-                    Position = position,
-                    Rotation = rotation,
-                    Wave = wave,
-                    Time = timeSeconds,
-                    Money = getCurrentMoney()
-                })
-                
-                print("[AV Macro] Recorded Render: " .. unitName)
-                saveRecording()
-                
-            elseif action == "Upgrade" then
-                local unitId = args[1]
-                
-                -- Находим юнита и получаем его позицию
-                task.wait(0.1)
-                local unit = Workspace.Units:FindFirstChild(unitId)
-                if unit then
-                    local unitPos = nil
-                    if unit:IsA("BasePart") then
-                        unitPos = unit.Position
-                    elseif unit:FindFirstChild("HumanoidRootPart") then
-                        unitPos = unit.HumanoidRootPart.Position
+                if action == "Render" then
+                    local unitData = args[2]
+                    local slotData = args[3] or {}
+                    
+                    local unitName = unitData[1]
+                    local level = unitData[2]
+                    local position = {unitData[3].X, unitData[3].Y, unitData[3].Z}
+                    local rotation = unitData[4]
+                    local slotIndex = slotData.SlotIndex or 1
+                    
+                    table.insert(recorded, {
+                        Action = "Render",
+                        UnitName = unitName,
+                        Level = level,
+                        Position = position,
+                        Rotation = rotation,
+                        SlotIndex = slotIndex,
+                        Wave = wave,
+                        Time = timeSeconds,
+                        Money = getCurrentMoney()
+                    })
+                    
+                    print("[AV Macro] Recorded Render: " .. unitName .. " (Slot: " .. slotIndex .. ")")
+                    saveRecording()
+                    
+                elseif action == "Upgrade" then
+                    local unitId = args[2]
+                    
+                    task.wait(0.1)
+                    local unit = Workspace.Units:FindFirstChild(unitId)
+                    if unit then
+                        local unitPos = nil
+                        if unit:IsA("BasePart") then
+                            unitPos = unit.Position
+                        elseif unit:FindFirstChild("HumanoidRootPart") then
+                            unitPos = unit.HumanoidRootPart.Position
+                        end
+                        
+                        if unitPos then
+                            table.insert(recorded, {
+                                Action = "Upgrade",
+                                Position = {unitPos.X, unitPos.Y, unitPos.Z},
+                                Wave = wave,
+                                Time = timeSeconds,
+                                Money = getCurrentMoney()
+                            })
+                            
+                            print("[AV Macro] Recorded Upgrade")
+                            saveRecording()
+                        end
                     end
                     
-                    if unitPos then
-                        table.insert(recorded, {
-                            Action = "Upgrade",
-                            Position = {unitPos.X, unitPos.Y, unitPos.Z},
-                            Wave = wave,
-                            Time = timeSeconds,
-                            Money = getCurrentMoney()
-                        })
+                elseif action == "Sell" then
+                    local unitId = args[2]
+                    
+                    local unit = Workspace.Units:FindFirstChild(unitId)
+                    if unit then
+                        local unitPos = nil
+                        if unit:IsA("BasePart") then
+                            unitPos = unit.Position
+                        elseif unit:FindFirstChild("HumanoidRootPart") then
+                            unitPos = unit.HumanoidRootPart.Position
+                        end
                         
-                        print("[AV Macro] Recorded Upgrade at position")
-                        saveRecording()
+                        if unitPos then
+                            table.insert(recorded, {
+                                Action = "Sell",
+                                Position = {unitPos.X, unitPos.Y, unitPos.Z},
+                                Wave = wave,
+                                Time = timeSeconds
+                            })
+                            
+                            print("[AV Macro] Recorded Sell")
+                            saveRecording()
+                        end
+                    end
+                    
+                elseif action == "ChangePriority" then
+                    local unitId = args[2]
+                    local priority = args[3]
+                    
+                    local unit = Workspace.Units:FindFirstChild(unitId)
+                    if unit then
+                        local unitPos = nil
+                        if unit:IsA("BasePart") then
+                            unitPos = unit.Position
+                        elseif unit:FindFirstChild("HumanoidRootPart") then
+                            unitPos = unit.HumanoidRootPart.Position
+                        end
+                        
+                        if unitPos then
+                            table.insert(recorded, {
+                                Action = "ChangePriority",
+                                Position = {unitPos.X, unitPos.Y, unitPos.Z},
+                                Priority = priority,
+                                Wave = wave,
+                                Time = timeSeconds
+                            })
+                            
+                            print("[AV Macro] Recorded ChangePriority: " .. priority)
+                            saveRecording()
+                        end
                     end
                 end
                 
-            elseif action == "Sell" then
-                local unitId = args[1]
-                
-                local unit = Workspace.Units:FindFirstChild(unitId)
-                if unit then
-                    local unitPos = nil
-                    if unit:IsA("BasePart") then
-                        unitPos = unit.Position
-                    elseif unit:FindFirstChild("HumanoidRootPart") then
-                        unitPos = unit.HumanoidRootPart.Position
+            elseif remoteName == "SkipWaveEvent" then
+                if args[1] == "Skip" then
+                    local waveNum = tonumber(wave) or 0
+                    
+                    if waveNum > 0 then
+                        lastWaveBeforeSkip = waveNum
+                        skipCheckActive = true
                     end
                     
-                    if unitPos then
-                        table.insert(recorded, {
-                            Action = "Sell",
-                            Position = {unitPos.X, unitPos.Y, unitPos.Z},
-                            Wave = wave,
-                            Time = timeSeconds
-                        })
-                        
-                        print("[AV Macro] Recorded Sell")
-                        saveRecording()
-                    end
-                end
-                
-            elseif action == "ChangePriority" then
-                local unitId = args[1]
-                local priority = args[2]
-                
-                local unit = Workspace.Units:FindFirstChild(unitId)
-                if unit then
-                    local unitPos = nil
-                    if unit:IsA("BasePart") then
-                        unitPos = unit.Position
-                    elseif unit:FindFirstChild("HumanoidRootPart") then
-                        unitPos = unit.HumanoidRootPart.Position
-                    end
-                    
-                    if unitPos then
-                        table.insert(recorded, {
-                            Action = "ChangePriority",
-                            Position = {unitPos.X, unitPos.Y, unitPos.Z},
-                            Priority = priority,
-                            Wave = wave,
-                            Time = timeSeconds
-                        })
-                        
-                        print("[AV Macro] Recorded ChangePriority: " .. priority)
-                        saveRecording()
-                    end
+                    print("[AV Macro] Recorded SkipWave: Wave " .. waveNum)
+                    saveRecording()
                 end
             end
         end)
-        
-        return oldUnitFireServer(self, action, ...)
     end
     
-    -- Hook SkipWaveEvent
-    local oldSkipFireServer = SkipWaveEvent.FireServer
-    SkipWaveEvent.FireServer = function(self, action)
-        if action == "Skip" then
-            task.spawn(function()
-                local wave, timeStr, totalWaves = getCurrentWaveAndTime()
-                local waveNum = tonumber(wave) or 0
-                
-                if waveNum > 0 then
-                    lastWaveBeforeSkip = waveNum
-                    skipCheckActive = true
-                end
-                
-                if totalWaves ~= "?" then
-                    recordedTotalWaves = tonumber(totalWaves)
-                end
-                
-                print("[AV Macro] Recorded SkipWave: Wave " .. waveNum)
-                saveRecording()
-            end)
+    -- Hooking через hookmetamethod
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        if method == "FireServer" then
+            if self.Name == "UnitEvent" or self.Name == "SkipWaveEvent" then
+                recordEvent(self.Name, args)
+            end
         end
         
-        return oldSkipFireServer(self, action)
-    end
+        return oldNamecall(self, ...)
+    end)
     
     -- Сохранение при закрытии игры
     game:BindToClose(function()
@@ -411,6 +411,7 @@ else
             if action.Action == "Render" then
                 if currentMoney >= (action.Money or 0) then
                     local pos = Vector3.new(action.Position[1], action.Position[2], action.Position[3])
+                    local slotIndex = action.SlotIndex or 1
                     
                     pcall(function()
                         UnitEvent:FireServer("Render", {
@@ -418,6 +419,8 @@ else
                             action.Level,
                             pos,
                             action.Rotation
+                        }, {
+                            SlotIndex = slotIndex
                         })
                     end)
                     
@@ -427,7 +430,7 @@ else
                     if unitId then
                         local posKey = math.floor(action.Position[1]) .. "," .. math.floor(action.Position[3])
                         placedUnits[posKey] = unitId
-                        print("[AV Macro] Placed: " .. action.UnitName)
+                        print("[AV Macro] Placed: " .. action.UnitName .. " (Slot: " .. slotIndex .. ")")
                     end
                     
                     actionIndex = actionIndex + 1
