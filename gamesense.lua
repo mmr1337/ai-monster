@@ -41,23 +41,23 @@ local Sentinel = {
     ConfigFolder = "SentinelConfigs",
 
     Theme = {
-        Background  = Color3.fromRGB(15, 15, 15),
-        Primary     = Color3.fromRGB(20, 20, 20),
-        Secondary   = Color3.fromRGB(28, 28, 28),
-        Tertiary    = Color3.fromRGB(35, 35, 35),
-        Accent      = Color3.fromRGB(0, 150, 255),
-        Text        = Color3.fromRGB(245, 245, 245),
-        SubText     = Color3.fromRGB(160, 160, 160),
-        Disabled    = Color3.fromRGB(70, 70, 70),
-        Border      = Color3.fromRGB(60, 60, 60),
-        InnerBorder = Color3.fromRGB(45, 45, 45),
-        DarkBorder  = Color3.fromRGB(0, 0, 0),
-        ElementBg   = Color3.fromRGB(30, 30, 30),
-        ToggleOff   = Color3.fromRGB(55, 55, 55),
-        SliderBg    = Color3.fromRGB(40, 40, 40),
-        DropdownBg  = Color3.fromRGB(20, 20, 20),
-        Hover       = Color3.fromRGB(45, 45, 45),
-        GlassTrans  = 0.15,
+        Accent      = Color3.fromRGB(55, 140, 255), -- Refined Blue
+        Background  = Color3.fromRGB(10, 10, 12),
+        Primary     = Color3.fromRGB(18, 18, 22),
+        Secondary   = Color3.fromRGB(22, 22, 28),
+        Tertiary    = Color3.fromRGB(28, 28, 35),
+        Border      = Color3.fromRGB(35, 35, 42),
+        InnerBorder = Color3.fromRGB(32, 32, 38),
+        DarkBorder  = Color3.fromRGB(4, 4, 6),
+        Text        = Color3.fromRGB(240, 240, 245),
+        SubText     = Color3.fromRGB(150, 150, 158),
+        Disabled    = Color3.fromRGB(55, 55, 62),
+        Hover       = Color3.fromRGB(30, 30, 38),
+        ElementBg   = Color3.fromRGB(22, 22, 28),
+        ToggleOff   = Color3.fromRGB(45, 45, 52),
+        SliderBg    = Color3.fromRGB(35, 35, 42),
+        DropdownBg  = Color3.fromRGB(20, 20, 24),
+        GlassTrans  = 0.12, 
     },
 
     FontMap = {
@@ -116,6 +116,13 @@ local function GetKeyName(kc)
 end
 
 local function Truncate(n, d) local m = 10^(d or 0) return math.floor(n*m)/m end
+
+local function CreateShadow(parent)
+    local s1 = Create("UIStroke", {Parent = parent, Thickness = 6, Color = Color3.new(0,0,0), Transparency = 0.95, ZIndex = -1})
+    local s2 = Create("UIStroke", {Parent = parent, Thickness = 4, Color = Color3.new(0,0,0), Transparency = 0.9, ZIndex = -1})
+    local s3 = Create("UIStroke", {Parent = parent, Thickness = 2, Color = Color3.new(0,0,0), Transparency = 0.85, ZIndex = -1})
+    return {s1, s2, s3}
+end
 
 function Sentinel:OnAccentChange(cb) table.insert(self._accentCbs, cb) end
 function Sentinel:SetAccent(c)
@@ -184,11 +191,11 @@ function Sentinel:SetScale(s)
     Tween(UIScaleObj, {Scale = self.Scale}, 0.3)
 end
 
-function Sentinel:ShowSplash()
+function Sentinel:ShowSplash(iconId)
     local splash = Create("Frame", {
         Parent = ScreenGui, Name = "Splash",
         Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0,0,0), 
-        BackgroundTransparency = 0, ZIndex = 10000
+        BackgroundTransparency = 0, ZIndex = 11000 -- Extra priority
     })
 
     local content = Create("CanvasGroup", {
@@ -197,48 +204,41 @@ function Sentinel:ShowSplash()
         GroupTransparency = 1
     })
 
+    if iconId then
+        Create("ImageLabel", {
+            Parent = content,
+            Size = UDim2.new(0, 80, 0, 80), Position = UDim2.new(0.5, -40, 0, 0),
+            BackgroundTransparency = 1,
+            Image = iconId, ZIndex = 11100
+        })
+    end
+
     local title = Create("TextLabel", {
         Parent = content, Size = UDim2.new(1, 0, 0, 60), 
-        BackgroundTransparency = 1, Text = "SENTINEL", 
-        TextColor3 = self.Theme.Text, TextSize = 54, 
+        Position = UDim2.new(0, 0, 0, iconId and 85 or 20), BackgroundTransparency = 1, 
+        Text = "SENTINEL", TextColor3 = self.Theme.Text, TextSize = 48, 
         Font = Enum.Font.GothamBold, TextStrokeTransparency = 0.6
     })
     
-    local glow = Create("Frame", {
-        Parent = content, Size = UDim2.new(0, 180, 0, 2), 
-        Position = UDim2.new(0.5, -90, 0, 64), BackgroundColor3 = self.Theme.Accent, 
-        BorderSizePixel = 0, ZIndex = 23
-    })
-    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = glow})
-
-    local version = Create("TextLabel", {
-        Parent = content, Size = UDim2.new(1, 0, 0, 20), 
-        Position = UDim2.new(0, 0, 0, 68), BackgroundTransparency = 1, 
-        Text = "MODERN HYBRID v" .. self.Version, TextColor3 = self.Theme.SubText, 
-        TextSize = 13, Font = Enum.Font.GothamMedium
-    })
-
     local barBg = Create("Frame", {
         Parent = content, Size = UDim2.new(0.5, 0, 0, 2), 
-        Position = UDim2.new(0.25, 0, 0, 110), BackgroundColor3 = self.Theme.Secondary, 
+        Position = UDim2.new(0.25, 0, 0, iconId and 145 or 85), BackgroundColor3 = self.Theme.Secondary, 
         BorderSizePixel = 0
     })
-    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = barBg})
     
     local barFill = Create("Frame", {
         Parent = barBg, Size = UDim2.new(0, 0, 1, 0), 
         BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0
     })
-    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = barFill})
 
     -- Sequence
-    Tween(content, {GroupTransparency = 0, Size = UDim2.new(0, 440, 0, 180), Position = UDim2.new(0.5, -220, 0.5, -90)}, 1.2, Enum.EasingStyle.Quint)
+    Tween(content, {GroupTransparency = 0, Size = UDim2.new(0, 480, 0, 200), Position = UDim2.new(0.5, -240, 0.5, -100)}, 1.2, Enum.EasingStyle.Quint)
     task.wait(0.4)
     Tween(barFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.8, Enum.EasingStyle.Quart)
-    task.wait(2.0)
+    task.wait(2.2)
 
     Tween(splash, {BackgroundTransparency = 1}, 0.8)
-    Tween(content, {GroupTransparency = 1, Size = UDim2.new(0, 500, 0, 220), Position = UDim2.new(0.5, -250, 0.5, -110)}, 0.6, Enum.EasingStyle.Quint)
+    Tween(content, {GroupTransparency = 1}, 0.6, Enum.EasingStyle.Quint)
     task.delay(0.9, function() splash:Destroy() end)
 end
 
@@ -646,71 +646,71 @@ function Sentinel:CreateWindow(config)
     config = config or {}
     local winTitle = config.Title or "SENTINEL"
     local winSize = config.Size or UDim2.new(0, 580, 0, 460)
+    local winIcon = config.Icon
     self.ToggleKey = config.ToggleKey or Enum.KeyCode.RightControl
 
     local Window = {Tabs = {}, ActiveTab = nil}
 
     local main = Create("CanvasGroup", {
-    Parent = ScreenGui, Name = "SentinelWindow",
+        Parent = ScreenGui, Name = "SentinelWindow",
         Size = winSize,
         Position = UDim2.new(0.5, -winSize.X.Offset/2, 0.5, -winSize.Y.Offset/2),
         BackgroundColor3 = self.Theme.Background,
         BackgroundTransparency = self.Theme.GlassTrans,
         BorderSizePixel = 0, ZIndex = 1, ClipsDescendants = true,
     })
-    Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = main})
-    local mainStroke = Create("UIStroke", {Parent = main, Color = Color3.new(1,1,1), Thickness = 1, Transparency = 0.8})
-    mainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    Create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = main})
+    CreateShadow(main)
 
     local inner = Create("Frame", {
         Parent = main,
-        Size = UDim2.new(1, -6, 1, -6), Position = UDim2.new(0, 3, 0, 3),
-        BackgroundColor3 = self.Theme.Primary, BackgroundTransparency = self.Theme.GlassTrans, BorderSizePixel = 0, ZIndex = 2,
+        Size = UDim2.new(1, -4, 1, -4), Position = UDim2.new(0, 2, 0, 2),
+        BackgroundColor3 = self.Theme.Primary, BackgroundTransparency = 0,
+        BorderSizePixel = 0, ZIndex = 2,
     })
-    Create("UICorner", {CornerRadius = UDim.new(0, 4), Parent = inner})
-    Create("UIStroke", {Parent = inner, Color = self.Theme.Border, Thickness = 1})
+    Create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = inner})
+    local innerStroke = Create("UIStroke", {Parent = inner, Color = self.Theme.Border, Thickness = 1, Transparency = 0.5})
+    innerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-    CreateRGBBar(inner, 2, 50)
+    CreateRGBBar(inner, 2, 35)
 
     -- Header
     local header = Create("Frame", {
         Parent = inner,
-        Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 2),
+        Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 2),
         BackgroundTransparency = 1, ZIndex = 3,
     })
 
-    -- Clean Text Logo with thin bar
-    local logoBar = Create("Frame", {
-        Parent = header,
-        Size = UDim2.new(0, 2, 0, 14), Position = UDim2.new(0, 10, 0.5, -7),
-        BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0,
-        ZIndex = 5,
-    })
-    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = logoBar})
+    if winIcon then
+        Create("ImageLabel", {
+            Parent = header,
+            Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(0, 12, 0.5, -10),
+            BackgroundTransparency = 1, Image = winIcon, ImageColor3 = self.Theme.Accent, ZIndex = 5
+        })
+    else
+        local logoBar = Create("Frame", {
+            Parent = header,
+            Size = UDim2.new(0, 2, 0, 16), Position = UDim2.new(0, 10, 0.5, -8),
+            BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0, ZIndex = 5,
+        })
+        Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = logoBar})
+    end
 
     local titleLbl = Create("TextLabel", {
         Parent = header,
-        Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, 18, 0, 0),
+        Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, winIcon and 38 or 18, 0, 0),
         BackgroundTransparency = 1, Text = winTitle,
-        TextColor3 = self.Theme.Text, TextSize = 13,
+        TextColor3 = self.Theme.Text, TextSize = 14,
         Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
     })
     table.insert(self.AllTextLabels, titleLbl)
 
-    Create("TextLabel", {
-        Parent = header,
-        Size = UDim2.new(0, 30, 1, 0), Position = UDim2.new(0, 34 + titleLbl.TextBounds.X + 5, 0, 0),
-        BackgroundTransparency = 1, Text = "v"..self.Version,
-        TextColor3 = self.Theme.SubText, TextSize = 9,
-        Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
-    })
-
     local closeBtn = Create("TextButton", {
         Parent = header,
-        Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(1, -30, 0.5, -13),
+        Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -32, 0.5, -12),
         BackgroundTransparency = 1, Text = "×",
-        TextColor3 = self.Theme.SubText, TextSize = 16,
-        Font = Enum.Font.GothamBold, ZIndex = 5, AutoButtonColor = false,
+        TextColor3 = self.Theme.SubText, TextSize = 20,
+        Font = Enum.Font.GothamMedium, ZIndex = 5, AutoButtonColor = false,
     })
     closeBtn.MouseEnter:Connect(function() Tween(closeBtn, {TextColor3 = Color3.fromRGB(255,80,80)}, 0.12) end)
     closeBtn.MouseLeave:Connect(function() Tween(closeBtn, {TextColor3 = self.Theme.SubText}, 0.12) end)
@@ -718,8 +718,8 @@ function Sentinel:CreateWindow(config)
 
     Create("Frame", {
         Parent = inner,
-        Size = UDim2.new(1, -8, 0, 1), Position = UDim2.new(0, 4, 0, 32),
-        BackgroundColor3 = self.Theme.Border, BorderSizePixel = 0, ZIndex = 3,
+        Size = UDim2.new(1, -12, 0, 1), Position = UDim2.new(0, 6, 0, 38),
+        BackgroundColor3 = self.Theme.Border, BackgroundTransparency = 0.5, BorderSizePixel = 0, ZIndex = 3,
     })
 
     -- Left Sidebar for Tabs
