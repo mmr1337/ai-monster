@@ -41,22 +41,23 @@ local Sentinel = {
     ConfigFolder = "SentinelConfigs",
 
     Theme = {
-        Background  = Color3.fromRGB(12, 12, 12),
-        Primary     = Color3.fromRGB(18, 18, 18),
-        Secondary   = Color3.fromRGB(25, 25, 25),
-        Tertiary    = Color3.fromRGB(32, 32, 32),
-        Accent      = Color3.fromRGB(149, 184, 6),
-        Text        = Color3.fromRGB(235, 235, 235),
-        SubText     = Color3.fromRGB(155, 155, 155),
-        Disabled    = Color3.fromRGB(60, 60, 60),
-        Border      = Color3.fromRGB(45, 45, 45),
-        InnerBorder = Color3.fromRGB(35, 35, 35),
-        DarkBorder  = Color3.fromRGB(10, 10, 10),
-        ElementBg   = Color3.fromRGB(25, 25, 25),
-        ToggleOff   = Color3.fromRGB(45, 45, 45),
-        SliderBg    = Color3.fromRGB(35, 35, 35),
-        DropdownBg  = Color3.fromRGB(15, 15, 15),
-        Hover       = Color3.fromRGB(38, 38, 38),
+        Background  = Color3.fromRGB(15, 15, 15),
+        Primary     = Color3.fromRGB(20, 20, 20),
+        Secondary   = Color3.fromRGB(28, 28, 28),
+        Tertiary    = Color3.fromRGB(35, 35, 35),
+        Accent      = Color3.fromRGB(0, 150, 255),
+        Text        = Color3.fromRGB(245, 245, 245),
+        SubText     = Color3.fromRGB(160, 160, 160),
+        Disabled    = Color3.fromRGB(70, 70, 70),
+        Border      = Color3.fromRGB(60, 60, 60),
+        InnerBorder = Color3.fromRGB(45, 45, 45),
+        DarkBorder  = Color3.fromRGB(0, 0, 0),
+        ElementBg   = Color3.fromRGB(30, 30, 30),
+        ToggleOff   = Color3.fromRGB(55, 55, 55),
+        SliderBg    = Color3.fromRGB(40, 40, 40),
+        DropdownBg  = Color3.fromRGB(20, 20, 20),
+        Hover       = Color3.fromRGB(45, 45, 45),
+        GlassTrans  = 0.15,
     },
 
     FontMap = {
@@ -190,37 +191,46 @@ function Sentinel:ShowSplash()
         BackgroundTransparency = 0, ZIndex = 10000
     })
     local content = Create("CanvasGroup", {
-        Parent = splash, Size = UDim2.new(0, 300, 0, 100), 
-        Position = UDim2.new(0.5, -150, 0.5, -50), BackgroundTransparency = 1
+        Parent = splash, Size = UDim2.new(0, 400, 0, 150), 
+        Position = UDim2.new(0.5, -200, 0.5, -75), BackgroundTransparency = 1
     })
     local title = Create("TextLabel", {
-        Parent = content, Size = UDim2.new(1, 0, 0, 40), 
+        Parent = content, Size = UDim2.new(1, 0, 0, 50), 
         BackgroundTransparency = 1, Text = "SENTINEL", 
-        TextColor3 = self.Theme.Text, TextSize = 42, 
+        TextColor3 = self.Theme.Text, TextSize = 48, 
         Font = Enum.Font.GothamBold, TextStrokeTransparency = 0.8
     })
     local version = Create("TextLabel", {
         Parent = content, Size = UDim2.new(1, 0, 0, 20), 
-        Position = UDim2.new(0, 0, 0, 40), BackgroundTransparency = 1, 
-        Text = "PREMIUM UI v" .. self.Version, TextColor3 = self.Theme.SubText, 
+        Position = UDim2.new(0, 0, 0, 50), BackgroundTransparency = 1, 
+        Text = "MODERN GLASS UI v" .. self.Version, TextColor3 = self.Theme.SubText, 
         TextSize = 14, Font = self.CurrentFont
     })
     local barBg = Create("Frame", {
-        Parent = content, Size = UDim2.new(0.8, 0, 0, 2), 
-        Position = UDim2.new(0.1, 0, 0, 80), BackgroundColor3 = self.Theme.Secondary, 
+        Parent = content, Size = UDim2.new(0.6, 0, 0, 2), 
+        Position = UDim2.new(0.2, 0, 0, 90), BackgroundColor3 = self.Theme.Secondary, 
         BorderSizePixel = 0
     })
+    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = barBg})
     local barFill = Create("Frame", {
         Parent = barBg, Size = UDim2.new(0, 0, 1, 0), 
         BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0
     })
+    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = barFill})
     
-    task.wait(0.2)
-    Tween(barFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.2)
-    task.wait(1.5)
-    Tween(splash, {BackgroundTransparency = 1}, 0.5)
-    Tween(content, {GroupTransparency = 1}, 0.4)
-    task.delay(0.6, function() splash:Destroy() end)
+    content.GroupTransparency = 1
+    content.Size = UDim2.new(0, 300, 0, 120)
+    content.Position = UDim2.new(0.5, -150, 0.5, -60)
+    
+    Tween(content, {GroupTransparency = 0, Size = UDim2.new(0, 400, 0, 150), Position = UDim2.new(0.5, -200, 0.5, -75)}, 0.8, Enum.EasingStyle.Quint)
+    
+    task.wait(0.4)
+    Tween(barFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.4, Enum.EasingStyle.Quart)
+    task.wait(1.6)
+    
+    Tween(splash, {BackgroundTransparency = 1}, 0.6)
+    Tween(content, {GroupTransparency = 1, Size = UDim2.new(0, 450, 0, 180), Position = UDim2.new(0.5, -225, 0.5, -90)}, 0.5, Enum.EasingStyle.Quint)
+    task.delay(0.7, function() splash:Destroy() end)
 end
 
 function Sentinel:UpdateKeybindList()
@@ -234,6 +244,7 @@ function Sentinel:UpdateKeybindList()
 
     local y = 0
     for flag, data in pairs(self.ActiveBinds) do
+        if not self.Flags[flag] then continue end -- Only show if active (ON)
         local item = Create("Frame", {
             Parent = container, Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y),
             BackgroundTransparency = 1
@@ -635,15 +646,17 @@ function Sentinel:CreateWindow(config)
         Size = winSize,
         Position = UDim2.new(0.5, -winSize.X.Offset/2, 0.5, -winSize.Y.Offset/2),
         BackgroundColor3 = self.Theme.Background,
+        BackgroundTransparency = self.Theme.GlassTrans,
         BorderSizePixel = 0, ZIndex = 1, ClipsDescendants = true,
     })
     Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = main})
-    Create("UIStroke", {Parent = main, Color = self.Theme.DarkBorder, Thickness = 1})
+    local mainStroke = Create("UIStroke", {Parent = main, Color = Color3.new(1,1,1), Thickness = 1, Transparency = 0.8})
+    mainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
     local inner = Create("Frame", {
         Parent = main,
         Size = UDim2.new(1, -6, 1, -6), Position = UDim2.new(0, 3, 0, 3),
-        BackgroundColor3 = self.Theme.Primary, BorderSizePixel = 0, ZIndex = 2,
+        BackgroundColor3 = self.Theme.Primary, BackgroundTransparency = self.Theme.GlassTrans, BorderSizePixel = 0, ZIndex = 2,
     })
     Create("UICorner", {CornerRadius = UDim.new(0, 4), Parent = inner})
     Create("UIStroke", {Parent = inner, Color = self.Theme.Border, Thickness = 1})
@@ -657,31 +670,11 @@ function Sentinel:CreateWindow(config)
         BackgroundTransparency = 1, ZIndex = 3,
     })
 
-    local logo = Create("Frame", {
-        Parent = header,
-        Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 12, 0.5, -7),
-        BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0,
-        Rotation = 45, ZIndex = 5,
-    })
-    Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = logo})
-    local logoIn = Create("Frame", {
-        Parent = logo,
-        Size = UDim2.new(0, 6, 0, 6), Position = UDim2.new(0.5, -3, 0.5, -3),
-        BackgroundColor3 = self.Theme.Primary, BorderSizePixel = 0, ZIndex = 6,
-    })
-    Create("UICorner", {CornerRadius = UDim.new(0, 2), Parent = logoIn})
-
-    AddConn(RunService.Heartbeat:Connect(function()
-        if Sentinel.RGBEnabled then
-            logo.BackgroundColor3 = Color3.fromHSV((tick()*Sentinel.RGBSpeed)%1, 0.65, 1)
-        else
-            logo.BackgroundColor3 = Sentinel.Theme.Accent
-        end
-    end))
+    -- Logo Diamond Removed
 
     local titleLbl = Create("TextLabel", {
         Parent = header,
-        Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, 34, 0, 0),
+        Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, 12, 0, 0),
         BackgroundTransparency = 1, Text = winTitle,
         TextColor3 = self.Theme.Text, TextSize = 13,
         Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
@@ -1013,6 +1006,7 @@ end
                 })
                 Create("UIStroke", {Parent = cbOuter, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
                 Create("UIStroke", {Parent = cbOuter, Color = Sentinel.Theme.Border, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
+                Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = cbOuter})
 
                 local cbFill = Create("Frame", {
                     Parent = cbOuter,
@@ -1022,7 +1016,7 @@ end
                     BackgroundColor3 = Sentinel.Theme.Accent,
                     BorderSizePixel = 0, ZIndex = 9,
                 })
-                -- No UICorner for fill either
+                Create("UICorner", {CornerRadius = UDim.new(0, 2), Parent = cbFill})
 
                 local tLabel = Create("TextLabel", {
                     Parent = tF,
@@ -1047,10 +1041,11 @@ end
                     Sentinel.Flags[flag] = v
                     Tween(cbFill, {
                         Size = v and UDim2.new(1, -4, 1, -4) or UDim2.new(0, 0, 0, 0),
+                        BackgroundTransparency = v and 0 or 1,
                         BackgroundColor3 = v and Sentinel.Theme.Accent or Sentinel.Theme.ToggleOff,
-                    }, 0.12, Enum.EasingStyle.Quart)
-                    Tween(cbOuter, {BackgroundColor3 = v and Sentinel.Theme.Accent or Sentinel.Theme.ToggleOff}, 0.15)
-                    Tween(tLabel, {TextColor3 = v and Sentinel.Theme.Text or Sentinel.Theme.SubText}, 0.12)
+                    }, 0.15, Enum.EasingStyle.Back)
+                    Tween(cbOuter, {BackgroundColor3 = v and Sentinel.Theme.Accent or Sentinel.Theme.ToggleOff, BackgroundTransparency = v and 0.8 or 0}, 0.2)
+                    Tween(tLabel, {TextColor3 = v and Sentinel.Theme.Text or Sentinel.Theme.SubText}, 0.15)
                     if cfg.Callback then cfg.Callback(v) end
                 end
 
@@ -1270,14 +1265,21 @@ end
                 })
 
                 -- Drop list as popup on ScreenGui (so it's not clipped)
+                local dOverlay = Create("TextButton", {
+                    Parent = ScreenGui, Size = UDim2.new(1, 0, 1, 0), 
+                    BackgroundColor3 = Color3.new(0,0,0), BackgroundTransparency = 1,
+                    Text = "", AutoButtonColor = false, Visible = false, ZIndex = 2999
+                })
                 local dList = Create("Frame", {
                     Parent = ScreenGui,
-                    Size = UDim2.new(0, 0, 0, 0),
-                    BackgroundColor3 = Sentinel.Theme.DropdownBg,
+                    Size = UDim2.new(0, 220, 0, 0),
+                    Position = UDim2.new(0.5, -110, 0.5, 0),
+                    BackgroundColor3 = Sentinel.Theme.DropdownBg, BackgroundTransparency = 0.05,
                     BorderSizePixel = 0, ZIndex = 3000, ClipsDescendants = true, Visible = false,
                 })
-                Create("UIStroke", {Parent = dList, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
-                Create("UIStroke", {Parent = dList, Color = Sentinel.Theme.Border, Thickness = 1})
+                Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = dList})
+                local listStroke = Create("UIStroke", {Parent = dList, Color = Color3.new(1,1,1), Thickness = 1, Transparency = 0.8})
+                listStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
                 local listScroll = Create("ScrollingFrame", {
                     Parent = dList,
@@ -1374,24 +1376,39 @@ end
                 closeDropdown = function()
                     if not isOpen then return end
                     isOpen = false
-                    Tween(arrow, {Rotation = 0}, 0.12)
-                    Tween(dList, {Size = UDim2.new(0, dBtn.AbsoluteSize.X, 0, 0)}, 0.12, Enum.EasingStyle.Quart)
-                    task.delay(0.12, function() dList.Visible = false end)
+                    Tween(arrow, {Rotation = 0}, 0.15)
+                    Tween(dOverlay, {BackgroundTransparency = 1}, 0.2)
+                    Tween(dList, {Size = UDim2.new(0, 220, 0, 0), Position = UDim2.new(0.5, -110, 0.5, 20), BackgroundTransparency = 1}, 0.2, Enum.EasingStyle.Quint)
+                    task.delay(0.2, function() 
+                        dList.Visible = false 
+                        dOverlay.Visible = false
+                        -- Show Main Menu back
+                        local win = ScreenGui:FindFirstChild("SentinelWindow")
+                        if win then win.Visible = true end
+                    end)
                 end
 
                 openDropdown = function()
                     isOpen = true
-                    -- Position popup below button
-                    local s = UIScaleObj.Scale
-                    local bPos = dBtn.AbsolutePosition
-                    local bSz = dBtn.AbsoluteSize
-                    dList.Position = UDim2.new(0, bPos.X/s, 0, (bPos.Y + bSz.Y + 2)/s)
-                    dList.Size = UDim2.new(0, bSz.X/s, 0, 0)
+                    -- Hide Main Menu
+                    local win = ScreenGui:FindFirstChild("SentinelWindow")
+                    if win then win.Visible = false end
+
+                    dOverlay.Visible = true
+                    dOverlay.BackgroundTransparency = 1
+                    Tween(dOverlay, {BackgroundTransparency = 0.5}, 0.3)
+
+                    dList.Position = UDim2.new(0.5, -110, 0.5, 20)
+                    dList.Size = UDim2.new(0, 220, 0, 0)
+                    dList.BackgroundTransparency = 1
                     dList.Visible = true
-                    local lh = math.min(#options * 25 + 4, 160)
+                    
+                    local lh = math.min(#options * 25 + 10, 300)
                     Tween(arrow, {Rotation = 180}, 0.15)
-                    Tween(dList, {Size = UDim2.new(0, bSz.X/s, 0, lh)}, 0.15, Enum.EasingStyle.Quart)
+                    Tween(dList, {Size = UDim2.new(0, 220, 0, lh), Position = UDim2.new(0.5, -110, 0.5, -lh/2), BackgroundTransparency = 0.05}, 0.25, Enum.EasingStyle.Back)
                 end
+
+                dOverlay.MouseButton1Click:Connect(closeDropdown)
 
                 for _, o in ipairs(options) do createOpt(o) end
                 if multi then updateMultiText() end
