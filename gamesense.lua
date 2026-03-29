@@ -190,47 +190,56 @@ function Sentinel:ShowSplash()
         Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0,0,0), 
         BackgroundTransparency = 0, ZIndex = 10000
     })
+
     local content = Create("CanvasGroup", {
-        Parent = splash, Size = UDim2.new(0, 400, 0, 150), 
-        Position = UDim2.new(0.5, -200, 0.5, -75), BackgroundTransparency = 1
+        Parent = splash, Size = UDim2.new(0, 250, 0, 100), 
+        Position = UDim2.new(0.5, -125, 0.5, -50), BackgroundTransparency = 1,
+        GroupTransparency = 1
     })
+
     local title = Create("TextLabel", {
-        Parent = content, Size = UDim2.new(1, 0, 0, 50), 
+        Parent = content, Size = UDim2.new(1, 0, 0, 60), 
         BackgroundTransparency = 1, Text = "SENTINEL", 
-        TextColor3 = self.Theme.Text, TextSize = 48, 
-        Font = Enum.Font.GothamBold, TextStrokeTransparency = 0.8
+        TextColor3 = self.Theme.Text, TextSize = 54, 
+        Font = Enum.Font.GothamBold, TextStrokeTransparency = 0.6
     })
+    
+    local glow = Create("Frame", {
+        Parent = content, Size = UDim2.new(0, 180, 0, 2), 
+        Position = UDim2.new(0.5, -90, 0, 64), BackgroundColor3 = self.Theme.Accent, 
+        BorderSizePixel = 0, ZIndex = 23
+    })
+    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = glow})
+
     local version = Create("TextLabel", {
         Parent = content, Size = UDim2.new(1, 0, 0, 20), 
-        Position = UDim2.new(0, 0, 0, 50), BackgroundTransparency = 1, 
-        Text = "MODERN GLASS UI v" .. self.Version, TextColor3 = self.Theme.SubText, 
-        TextSize = 14, Font = self.CurrentFont
+        Position = UDim2.new(0, 0, 0, 68), BackgroundTransparency = 1, 
+        Text = "MODERN HYBRID v" .. self.Version, TextColor3 = self.Theme.SubText, 
+        TextSize = 13, Font = Enum.Font.GothamMedium
     })
+
     local barBg = Create("Frame", {
-        Parent = content, Size = UDim2.new(0.6, 0, 0, 2), 
-        Position = UDim2.new(0.2, 0, 0, 90), BackgroundColor3 = self.Theme.Secondary, 
+        Parent = content, Size = UDim2.new(0.5, 0, 0, 2), 
+        Position = UDim2.new(0.25, 0, 0, 110), BackgroundColor3 = self.Theme.Secondary, 
         BorderSizePixel = 0
     })
     Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = barBg})
+    
     local barFill = Create("Frame", {
         Parent = barBg, Size = UDim2.new(0, 0, 1, 0), 
         BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0
     })
     Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = barFill})
-    
-    content.GroupTransparency = 1
-    content.Size = UDim2.new(0, 300, 0, 120)
-    content.Position = UDim2.new(0.5, -150, 0.5, -60)
-    
-    Tween(content, {GroupTransparency = 0, Size = UDim2.new(0, 400, 0, 150), Position = UDim2.new(0.5, -200, 0.5, -75)}, 0.8, Enum.EasingStyle.Quint)
-    
+
+    -- Sequence
+    Tween(content, {GroupTransparency = 0, Size = UDim2.new(0, 440, 0, 180), Position = UDim2.new(0.5, -220, 0.5, -90)}, 1.2, Enum.EasingStyle.Quint)
     task.wait(0.4)
-    Tween(barFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.4, Enum.EasingStyle.Quart)
-    task.wait(1.6)
-    
-    Tween(splash, {BackgroundTransparency = 1}, 0.6)
-    Tween(content, {GroupTransparency = 1, Size = UDim2.new(0, 450, 0, 180), Position = UDim2.new(0.5, -225, 0.5, -90)}, 0.5, Enum.EasingStyle.Quint)
-    task.delay(0.7, function() splash:Destroy() end)
+    Tween(barFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.8, Enum.EasingStyle.Quart)
+    task.wait(2.0)
+
+    Tween(splash, {BackgroundTransparency = 1}, 0.8)
+    Tween(content, {GroupTransparency = 1, Size = UDim2.new(0, 500, 0, 220), Position = UDim2.new(0.5, -250, 0.5, -110)}, 0.6, Enum.EasingStyle.Quint)
+    task.delay(0.9, function() splash:Destroy() end)
 end
 
 function Sentinel:UpdateKeybindList()
@@ -670,11 +679,18 @@ function Sentinel:CreateWindow(config)
         BackgroundTransparency = 1, ZIndex = 3,
     })
 
-    -- Logo Diamond Removed
+    -- Clean Text Logo with thin bar
+    local logoBar = Create("Frame", {
+        Parent = header,
+        Size = UDim2.new(0, 2, 0, 14), Position = UDim2.new(0, 10, 0.5, -7),
+        BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0,
+        ZIndex = 5,
+    })
+    Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = logoBar})
 
     local titleLbl = Create("TextLabel", {
         Parent = header,
-        Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, 12, 0, 0),
+        Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, 18, 0, 0),
         BackgroundTransparency = 1, Text = winTitle,
         TextColor3 = self.Theme.Text, TextSize = 13,
         Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
@@ -706,34 +722,29 @@ function Sentinel:CreateWindow(config)
         BackgroundColor3 = self.Theme.Border, BorderSizePixel = 0, ZIndex = 3,
     })
 
-    -- Tab bar
-    local tabBar = Create("Frame", {
+    -- Left Sidebar for Tabs
+    local sideBar = Create("Frame", {
         Parent = inner,
-        Size = UDim2.new(1, -8, 0, 26), Position = UDim2.new(0, 4, 0, 34),
-        BackgroundColor3 = self.Theme.Secondary, BorderSizePixel = 0, ZIndex = 3, ClipsDescendants = true,
+        Size = UDim2.new(0, 150, 1, -38), Position = UDim2.new(0, 4, 0, 34),
+        BackgroundColor3 = self.Theme.Secondary, BackgroundTransparency = 0.5, BorderSizePixel = 0, ZIndex = 3,
     })
-    Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = tabBar})
-    Create("UIStroke", {Parent = tabBar, Color = self.Theme.Border, Thickness = 1})
+    Create("UICorner", {CornerRadius = UDim.new(0, 4), Parent = sideBar})
+    Create("UIStroke", {Parent = sideBar, Color = self.Theme.Border, Thickness = 1})
 
-    local tabBtnCont = Create("Frame", {
-        Parent = tabBar,
+    local tabBtnCont = Create("ScrollingFrame", {
+        Parent = sideBar,
         Size = UDim2.new(1, -4, 1, -4), Position = UDim2.new(0, 2, 0, 2),
-        BackgroundTransparency = 1, ZIndex = 4, ClipsDescendants = true,
+        BackgroundTransparency = 1, ZIndex = 4, ScrollBarThickness = 0,
+        CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
     })
     Create("UIListLayout", {
-        Parent = tabBtnCont, FillDirection = Enum.FillDirection.Horizontal,
-        SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2),
-    })
-
-    Create("Frame", {
-        Parent = inner,
-        Size = UDim2.new(1, -8, 0, 1), Position = UDim2.new(0, 4, 0, 61),
-        BackgroundColor3 = self.Theme.Border, BorderSizePixel = 0, ZIndex = 3,
+        Parent = tabBtnCont, FillDirection = Enum.FillDirection.Vertical,
+        SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4),
     })
 
     local contentArea = Create("Frame", {
         Parent = inner,
-        Size = UDim2.new(1, -12, 1, -68), Position = UDim2.new(0, 6, 0, 64),
+        Size = UDim2.new(1, -164, 1, -38), Position = UDim2.new(0, 158, 0, 34),
         BackgroundTransparency = 1, ZIndex = 3, ClipsDescendants = true,
     })
 
@@ -828,14 +839,20 @@ end
 
         local tabBtn = Create("TextButton", {
             Parent = tabBtnCont,
-            Size = UDim2.new(0, 0, 1, 0),
+            Size = UDim2.new(1, 0, 0, 32),
             BackgroundTransparency = 1, BackgroundColor3 = Sentinel.Theme.Tertiary,
-            Text = tc.Name or "Tab", TextColor3 = Sentinel.Theme.SubText,
-            TextSize = 11, Font = Sentinel.CurrentFont,
-            ZIndex = 5, AutoButtonColor = false, AutomaticSize = Enum.AutomaticSize.X,
+            Text = "  " .. (tc.Name or "Tab"), TextColor3 = Sentinel.Theme.SubText,
+            TextSize = 12, Font = Sentinel.CurrentFont,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 5, AutoButtonColor = false,
         })
-        Create("UIPadding", {Parent = tabBtn, PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14)})
-        Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = tabBtn})
+        local indicator = Create("Frame", {
+            Parent = tabBtn,
+            Size = UDim2.new(0, 2, 0, 0), Position = UDim2.new(0, 0, 0.5, 0),
+            BackgroundColor3 = Sentinel.Theme.Accent, BorderSizePixel = 0, ZIndex = 6,
+        })
+        Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = indicator})
+        Create("UICorner", {CornerRadius = UDim.new(0, 4), Parent = tabBtn})
         table.insert(Sentinel.AllTextLabels, tabBtn)
 
         local tabContent = Create("Frame", {
@@ -869,10 +886,13 @@ end
         local function selectTab()
             Sentinel:CloseAllPopups()
             for _, t in ipairs(Window.Tabs) do
-                Tween(t._btn, {TextColor3 = Sentinel.Theme.SubText, BackgroundTransparency = 1}, 0.12)
+                Tween(t._btn, {TextColor3 = Sentinel.Theme.SubText, BackgroundTransparency = 1}, 0.15)
+                local ind = t._btn:FindFirstChild("Frame")
+                if ind then Tween(ind, {Size = UDim2.new(0, 2, 0, 0), Position = UDim2.new(0, 0, 0.5, 0)}, 0.15) end
                 t._content.Visible = false
             end
-            Tween(tabBtn, {TextColor3 = Sentinel.Theme.Text, BackgroundTransparency = 0.8}, 0.12)
+            Tween(tabBtn, {TextColor3 = Sentinel.Theme.Text, BackgroundTransparency = 0.85}, 0.2)
+            Tween(indicator, {Size = UDim2.new(0, 2, 0, 16), Position = UDim2.new(0, 2, 0.5, -8)}, 0.2, Enum.EasingStyle.Back)
             tabContent.Visible = true
             Window.ActiveTab = Tab
         end
@@ -1420,20 +1440,7 @@ end
                 dBtn.MouseEnter:Connect(function() Tween(dBtn, {BackgroundColor3 = Sentinel.Theme.Hover}, 0.08) end)
                 dBtn.MouseLeave:Connect(function() Tween(dBtn, {BackgroundColor3 = Sentinel.Theme.ElementBg}, 0.08) end)
 
-                -- Close on outside click
-                AddConn(UserInputService.InputBegan:Connect(function(inp)
-                    if not isOpen then return end
-                    if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-                        task.defer(function()
-                            local mp = UserInputService:GetMouseLocation()
-                            local dPos, dSz = dList.AbsolutePosition, dList.AbsoluteSize
-                            local bPos2, bSz2 = dBtn.AbsolutePosition, dBtn.AbsoluteSize
-                            local inList = mp.X >= dPos.X and mp.X <= dPos.X+dSz.X and mp.Y >= dPos.Y-36 and mp.Y <= dPos.Y+dSz.Y
-                            local inBtn = mp.X >= bPos2.X and mp.X <= bPos2.X+bSz2.X and mp.Y >= bPos2.Y-36 and mp.Y <= bPos2.Y+bSz2.Y
-                            if not inList and not inBtn then closeDropdown() end
-                        end)
-                    end
-                end))
+                -- Outside click handled by dOverlay
 
                 -- Right-click
                 dBtn.MouseButton2Click:Connect(function()
