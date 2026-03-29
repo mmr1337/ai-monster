@@ -41,21 +41,22 @@ local Sentinel = {
     ConfigFolder = "SentinelConfigs",
 
     Theme = {
-        Background  = Color3.fromRGB(16, 16, 16),
-        Primary     = Color3.fromRGB(22, 22, 22),
-        Secondary   = Color3.fromRGB(28, 28, 28),
-        Tertiary    = Color3.fromRGB(36, 36, 36),
-        Accent      = Color3.fromRGB(156, 120, 255),
-        Text        = Color3.fromRGB(215, 215, 215),
-        SubText     = Color3.fromRGB(140, 140, 140),
-        Disabled    = Color3.fromRGB(70, 70, 70),
-        Border      = Color3.fromRGB(48, 48, 48),
+        Background  = Color3.fromRGB(12, 12, 12),
+        Primary     = Color3.fromRGB(18, 18, 18),
+        Secondary   = Color3.fromRGB(25, 25, 25),
+        Tertiary    = Color3.fromRGB(32, 32, 32),
+        Accent      = Color3.fromRGB(149, 184, 6),
+        Text        = Color3.fromRGB(235, 235, 235),
+        SubText     = Color3.fromRGB(155, 155, 155),
+        Disabled    = Color3.fromRGB(60, 60, 60),
+        Border      = Color3.fromRGB(45, 45, 45),
+        InnerBorder = Color3.fromRGB(35, 35, 35),
         DarkBorder  = Color3.fromRGB(10, 10, 10),
-        ElementBg   = Color3.fromRGB(32, 32, 32),
-        ToggleOff   = Color3.fromRGB(50, 50, 50),
-        SliderBg    = Color3.fromRGB(40, 40, 40),
-        DropdownBg  = Color3.fromRGB(20, 20, 20),
-        Hover       = Color3.fromRGB(42, 42, 42),
+        ElementBg   = Color3.fromRGB(25, 25, 25),
+        ToggleOff   = Color3.fromRGB(45, 45, 45),
+        SliderBg    = Color3.fromRGB(35, 35, 35),
+        DropdownBg  = Color3.fromRGB(15, 15, 15),
+        Hover       = Color3.fromRGB(38, 38, 38),
     },
 
     FontMap = {
@@ -74,6 +75,8 @@ local Sentinel = {
     _accentCbs = {},
     _activeNotifs = {},
     _openPopups = {},
+    ActiveBinds = {},
+    KeybindListFrame = nil,
 }
 
 -- ═══════════════════════════════════════
@@ -128,6 +131,38 @@ function Sentinel:CloseAllPopups()
     end
 end
 
+local function MakeDraggable(frame, handle)
+    handle = handle or frame
+    local dragging, dragInput, dragStart, startPos
+
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
 -- ═══════════════════════════════════════
 -- SCREEN GUI
 -- ═══════════════════════════════════════
@@ -146,6 +181,105 @@ local UIScaleObj = Create("UIScale", {Scale = Sentinel.Scale, Parent = ScreenGui
 function Sentinel:SetScale(s)
     self.Scale = math.clamp(s, 0.5, 2)
     Tween(UIScaleObj, {Scale = self.Scale}, 0.3)
+end
+
+function Sentinel:ShowSplash()
+    local splash = Create("Frame", {
+        Parent = ScreenGui, Name = "Splash",
+        Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0,0,0), 
+        BackgroundTransparency = 0, ZIndex = 10000
+    })
+    local content = Create("Frame", {
+        Parent = splash, Size = UDim2.new(0, 300, 0, 100), 
+        Position = UDim2.new(0.5, -150, 0.5, -50), BackgroundTransparency = 1
+    })
+    local title = Create("TextLabel", {
+        Parent = content, Size = UDim2.new(1, 0, 0, 40), 
+        BackgroundTransparency = 1, Text = "SENTINEL", 
+        TextColor3 = self.Theme.Text, TextSize = 42, 
+        Font = Enum.Font.GothamBold, TextStrokeTransparency = 0.8
+    })
+    local version = Create("TextLabel", {
+        Parent = content, Size = UDim2.new(1, 0, 0, 20), 
+        Position = UDim2.new(0, 0, 0, 40), BackgroundTransparency = 1, 
+        Text = "PREMIUM UI v" .. self.Version, TextColor3 = self.Theme.SubText, 
+        TextSize = 14, Font = self.CurrentFont
+    })
+    local barBg = Create("Frame", {
+        Parent = content, Size = UDim2.new(0.8, 0, 0, 2), 
+        Position = UDim2.new(0.1, 0, 0, 80), BackgroundColor3 = self.Theme.Secondary, 
+        BorderSizePixel = 0
+    })
+    local barFill = Create("Frame", {
+        Parent = barBg, Size = UDim2.new(0, 0, 1, 0), 
+        BackgroundColor3 = self.Theme.Accent, BorderSizePixel = 0
+    })
+    
+    task.wait(0.2)
+    Tween(barFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.2)
+    task.wait(1.5)
+    Tween(splash, {BackgroundTransparency = 1}, 0.5)
+    Tween(content, {GroupTransparency = 1}, 0.4)
+    task.delay(0.6, function() splash:Destroy() end)
+end
+
+function Sentinel:UpdateKeybindList()
+    if not self.KeybindListFrame then return end
+    local container = self.KeybindListFrame:FindFirstChild("List", true)
+    if not container then return end
+
+    for _, child in ipairs(container:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
+    end
+
+    local y = 0
+    for flag, data in pairs(self.ActiveBinds) do
+        local item = Create("Frame", {
+            Parent = container, Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y),
+            BackgroundTransparency = 1
+        })
+        Create("TextLabel", {
+            Parent = item, Size = UDim2.new(0, 100, 1, 0), Position = UDim2.new(0, 5, 0, 0),
+            BackgroundTransparency = 1, Text = data.Name, TextColor3 = self.Theme.Text, 
+            TextSize = 10, Font = self.CurrentFont, TextXAlignment = Enum.TextXAlignment.Left
+        })
+        Create("TextLabel", {
+            Parent = item, Size = UDim2.new(1, -110, 1, 0), Position = UDim2.new(0, 105, 0, 0),
+            BackgroundTransparency = 1, Text = "[" .. GetKeyName(data.Key) .. "]", 
+            TextColor3 = self.Theme.Accent, TextSize = 10, Font = self.CurrentFont, TextXAlignment = Enum.TextXAlignment.Right
+        })
+        y = y + 18
+    end
+    
+    self.KeybindListFrame.Size = UDim2.new(0, 180, 0, 24 + y + (y > 0 and 4 or 2))
+    self.KeybindListFrame.Visible = y > 0
+end
+
+function Sentinel:CreateKeybindList()
+    local frame = Create("Frame", {
+        Parent = ScreenGui, Name = "KeybindList",
+        Size = UDim2.new(0, 180, 0, 24), Position = UDim2.new(0, 10, 0.5, 0),
+        BackgroundColor3 = self.Theme.Primary, BorderSizePixel = 0, ZIndex = 500
+    })
+    self.KeybindListFrame = frame
+    Create("UIStroke", {Parent = frame, Color = self.Theme.DarkBorder, Thickness = 1})
+    Create("UIStroke", {Parent = frame, Color = self.Theme.Border, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
+    
+    local title = Create("TextLabel", {
+        Parent = frame, Size = UDim2.new(1, 0, 0, 22), 
+        BackgroundTransparency = 1, Text = "Keybinds", TextColor3 = self.Theme.Text, 
+        TextSize = 11, Font = Enum.Font.GothamBold
+    })
+    
+    local list = Create("Frame", {
+        Parent = frame, Name = "List",
+        Size = UDim2.new(1, -10, 1, -26), Position = UDim2.new(0, 5, 0, 24),
+        BackgroundTransparency = 1
+    })
+    
+    MakeDraggable(frame)
+    self:UpdateKeybindList()
+    return frame
 end
 
 -- ═══════════════════════════════════════
@@ -844,8 +978,8 @@ end
                     TextSize = 11, Font = Sentinel.CurrentFont,
                     ZIndex = 7, AutoButtonColor = false,
                 })
-                Create("UIStroke", {Parent = btn, Color = Sentinel.Theme.Border, Thickness = 1})
-                Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = btn})
+                Create("UIStroke", {Parent = btn, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
+                Create("UIStroke", {Parent = btn, Color = Sentinel.Theme.Border, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
                 table.insert(Sentinel.AllTextLabels, btn)
 
                 btn.MouseEnter:Connect(function() Tween(btn, {BackgroundColor3 = Sentinel.Theme.Hover}, 0.08) end)
@@ -877,8 +1011,8 @@ end
                     BackgroundColor3 = Sentinel.Theme.ToggleOff,
                     BorderSizePixel = 0, ZIndex = 8,
                 })
-                Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = cbOuter})
-                Create("UIStroke", {Parent = cbOuter, Color = Sentinel.Theme.Border, Thickness = 1})
+                Create("UIStroke", {Parent = cbOuter, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
+                Create("UIStroke", {Parent = cbOuter, Color = Sentinel.Theme.Border, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
 
                 local cbFill = Create("Frame", {
                     Parent = cbOuter,
@@ -888,7 +1022,7 @@ end
                     BackgroundColor3 = Sentinel.Theme.Accent,
                     BorderSizePixel = 0, ZIndex = 9,
                 })
-                Create("UICorner", {CornerRadius = UDim.new(0, 2), Parent = cbFill})
+                -- No UICorner for fill either
 
                 local tLabel = Create("TextLabel", {
                     Parent = tF,
@@ -949,12 +1083,16 @@ end
                                     bindLbl.Text = "["..GetKeyName(boundKey).."]"
                                     bindLbl.TextColor3 = Sentinel.Theme.Disabled
                                     Sentinel.Binds[flag] = {Key = boundKey, Callback = function() setToggle(not toggled) end}
+                                    Sentinel.ActiveBinds[flag] = {Name = cfg.Name or "Toggle", Key = boundKey}
+                                    Sentinel:UpdateKeybindList()
                                     bc:Disconnect()
                                 end
                             end)
                         elseif act == "reset" then
                             setToggle(cfg.Default or false)
                             boundKey = nil; bindLbl.Text = ""; Sentinel.Binds[flag] = nil
+                            Sentinel.ActiveBinds[flag] = nil
+                            Sentinel:UpdateKeybindList()
                         end
                     end)
                 end)
@@ -1005,7 +1143,7 @@ end
                     BackgroundColor3 = Sentinel.Theme.SliderBg,
                     BorderSizePixel = 0, ZIndex = 7,
                 })
-                Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = track})
+                Create("UIStroke", {Parent = track, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
 
                 local pct = (curV - minV) / (maxV - minV)
                 local fill = Create("Frame", {
@@ -1014,7 +1152,7 @@ end
                     BackgroundColor3 = Sentinel.Theme.Accent,
                     BorderSizePixel = 0, ZIndex = 8,
                 })
-                Create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = fill})
+                -- Sharp fill for slider
                 Sentinel:OnAccentChange(function(c) fill.BackgroundColor3 = c end)
 
                 local sliding = false
@@ -1083,6 +1221,7 @@ end
                 local isOpen = false
                 local multi = cfg.Multi or false
                 local multiSel = {}
+                local openDropdown, closeDropdown -- Forward declarations
 
                 if multi and type(cfg.Default) == "table" then
                     for _, v in ipairs(cfg.Default) do multiSel[v] = true end
@@ -1108,8 +1247,9 @@ end
                     BackgroundColor3 = Sentinel.Theme.ElementBg,
                     Text = "", ZIndex = 7, AutoButtonColor = false,
                 })
-                Create("UIStroke", {Parent = dBtn, Color = Sentinel.Theme.Border, Thickness = 1})
-                Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = dBtn})
+                Create("UIStroke", {Parent = dBtn, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
+                local innerStroke = Create("UIStroke", {Parent = dBtn, Color = Sentinel.Theme.Border, Thickness = 1})
+                innerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
                 local selLbl = Create("TextLabel", {
                     Parent = dBtn,
@@ -1134,10 +1274,10 @@ end
                     Parent = ScreenGui,
                     Size = UDim2.new(0, 0, 0, 0),
                     BackgroundColor3 = Sentinel.Theme.DropdownBg,
-                    BorderSizePixel = 0, ZIndex = 60, ClipsDescendants = true, Visible = false,
+                    BorderSizePixel = 0, ZIndex = 3000, ClipsDescendants = true, Visible = false,
                 })
+                Create("UIStroke", {Parent = dList, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
                 Create("UIStroke", {Parent = dList, Color = Sentinel.Theme.Border, Thickness = 1})
-                Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = dList})
 
                 local listScroll = Create("ScrollingFrame", {
                     Parent = dList,
@@ -1231,7 +1371,7 @@ end
                     table.insert(optItems, oi)
                 end
 
-                local function closeDropdown()
+                closeDropdown = function()
                     if not isOpen then return end
                     isOpen = false
                     Tween(arrow, {Rotation = 0}, 0.12)
@@ -1239,7 +1379,7 @@ end
                     task.delay(0.12, function() dList.Visible = false end)
                 end
 
-                local function openDropdown()
+                openDropdown = function()
                     isOpen = true
                     -- Position popup below button
                     local s = UIScaleObj.Scale
@@ -1354,8 +1494,8 @@ end
                     Font = Enum.Font.GothamBold, ZIndex = 8,
                     AutoButtonColor = false, AutomaticSize = Enum.AutomaticSize.X,
                 })
-                Create("UIStroke", {Parent = kBtn, Color = Sentinel.Theme.Border, Thickness = 1})
-                Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = kBtn})
+                Create("UIStroke", {Parent = kBtn, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
+                Create("UIStroke", {Parent = kBtn, Color = Sentinel.Theme.Border, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
                 Create("UIPadding", {Parent = kBtn, PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6)})
 
                 kBtn.MouseButton1Click:Connect(function()
@@ -1367,6 +1507,14 @@ end
                             curKey = inp.KeyCode == Enum.KeyCode.Escape and Enum.KeyCode.Unknown or inp.KeyCode
                             kBtn.Text = curKey ~= Enum.KeyCode.Unknown and "["..GetKeyName(curKey).."]" or "[NONE]"
                             Sentinel.Flags[flag] = curKey
+                            
+                            if curKey ~= Enum.KeyCode.Unknown then
+                                Sentinel.ActiveBinds[flag] = {Name = cfg.Name or "Keybind", Key = curKey}
+                            else
+                                Sentinel.ActiveBinds[flag] = nil
+                            end
+                            Sentinel:UpdateKeybindList()
+
                             Tween(kBtn, {TextColor3 = Sentinel.Theme.SubText}, 0.08)
                             listening = false; bc:Disconnect()
                             if cfg.Callback then cfg.Callback(curKey) end
@@ -1419,8 +1567,8 @@ end
                     Font = Sentinel.CurrentFont, ZIndex = 8,
                     ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left,
                 })
-                Create("UIStroke", {Parent = tb, Color = Sentinel.Theme.Border, Thickness = 1})
-                Create("UICorner", {CornerRadius = UDim.new(0, 3), Parent = tb})
+                Create("UIStroke", {Parent = tb, Color = Sentinel.Theme.DarkBorder, Thickness = 1})
+                Create("UIStroke", {Parent = tb, Color = Sentinel.Theme.Border, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
                 Create("UIPadding", {Parent = tb, PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6)})
                 table.insert(Sentinel.AllTextLabels, tb)
 
