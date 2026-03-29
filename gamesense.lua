@@ -496,8 +496,8 @@ function Sentinel:CreateWindow(config)
 
     local Window = {Tabs = {}, ActiveTab = nil}
 
-    local main = Create("Frame", {
-        Parent = ScreenGui, Name = "SentinelWindow",
+    local main = Create("CanvasGroup", {
+    Parent = ScreenGui, Name = "SentinelWindow",
         Size = winSize,
         Position = UDim2.new(0.5, -winSize.X.Offset/2, 0.5, -winSize.Y.Offset/2),
         BackgroundColor3 = self.Theme.Background,
@@ -681,8 +681,15 @@ function Sentinel:CreateWindow(config)
     end))
 
     -- Open animation (minimal)
+local useCanvas = main:IsA("CanvasGroup")
+if useCanvas then
     main.GroupTransparency = 1
     Tween(main, {GroupTransparency = 0}, 0.25, Enum.EasingStyle.Quint)
+else
+    main.BackgroundTransparency = 0.3
+    main.Size = UDim2.new(0, winSize.X.Offset, 0, winSize.Y.Offset * 0.97)
+    Tween(main, {Size = winSize, BackgroundTransparency = 0}, 0.25, Enum.EasingStyle.Quint)
+end
 
     -- ═══════════════════════════════════════
     -- TAB
