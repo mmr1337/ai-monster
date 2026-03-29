@@ -189,7 +189,7 @@ function Sentinel:ShowSplash()
         Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0,0,0), 
         BackgroundTransparency = 0, ZIndex = 10000
     })
-    local content = Create("Frame", {
+    local content = Create("CanvasGroup", {
         Parent = splash, Size = UDim2.new(0, 300, 0, 100), 
         Position = UDim2.new(0.5, -150, 0.5, -50), BackgroundTransparency = 1
     })
